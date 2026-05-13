@@ -151,6 +151,10 @@ let aimWs: WebSocket | null = null;
 let reconnectTimer: NodeJS.Timeout | null = null;
 let pingTimer: NodeJS.Timeout | null = null;
 let aimConnected = false;
+let reconnectDelay = 5000;       // starts at 5s
+const MAX_RECONNECT_DELAY = 300_000; // caps at 5 minutes
+let consecutiveFailures = 0;
+let lastErrorMsg = '';
 
 // ── Command abort tracking ──
 // When a new command arrives while one is still being processed,
@@ -389,6 +393,9 @@ function connectToAIM(config: AIMBridgeConfig): void {
 
   aimWs.on('open', () => {
     aimConnected = true;
+    reconnectDelay = 5000; // reset backoff on successful connect
+    consecutiveFailures = 0;
+    lastErrorMsg = '';
     console.log(`  [aim] Connected to AIM relay as '${deviceType}': ${config.url}`);
 
     // Register with capabilities
@@ -450,18 +457,30 @@ function connectToAIM(config: AIMBridgeConfig): void {
   aimWs.on('close', () => {
     aimConnected = false;
     if (pingTimer) { clearInterval(pingTimer); pingTimer = null; }
-    console.log(`  [aim] Disconnected from AIM relay`);
 
     // Clear mac-proxy sender on disconnect
     if (!IS_MAC) {
       setMacProxySender(null as any);
     }
 
+    consecutiveFailures++;
+    if (consecutiveFailures <= 1) {
+      console.log(`  [aim] Disconnected from AIM relay`);
+    } else if (consecutiveFailures === 2) {
+      console.log(`  [aim] Disconnected — retrying with backoff (suppressing repeat logs)`);
+    }
+    // After 2 failures, suppress disconnect logs
+
     scheduleReconnect(config);
   });
 
   aimWs.on('error', (err) => {
-    console.log(`  [aim] Error: ${err.message}`);
+    const msg = err.message;
+    // Only log if it's a new error message (suppress repeated identical errors)
+    if (msg !== lastErrorMsg || consecutiveFailures <= 1) {
+      console.log(`  [aim] Error: ${msg}`);
+      lastErrorMsg = msg;
+    }
   });
 }
 
@@ -470,7 +489,9 @@ function scheduleReconnect(config: AIMBridgeConfig): void {
   reconnectTimer = setTimeout(() => {
     reconnectTimer = null;
     connectToAIM(config);
-  }, 5000);
+  }, reconnectDelay);
+  // Exponential backoff: 5s → 10s → 20s → 40s → ... → 5min max
+  reconnectDelay = Math.min(reconnectDelay * 2, MAX_RECONNECT_DELAY);
 }
 
 // ── Public API ──
