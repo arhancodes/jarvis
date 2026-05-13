@@ -10,12 +10,14 @@ export class YouTubeToolsModule implements JarvisModule {
     {
       intent: 'play',
       patterns: [
+        /^(?:search|find|look\s+up)\s+(?:on\s+)?(?:youtube|yt)\s+(?:for\s+)?(.+)/i,
+        /^(?:search|find|look\s+up)\s+(.+?)\s+on\s+(?:youtube|yt)$/i,
         /^play\s+(.+?)\s+on\s+youtube$/i,
         /^(?:play|watch)\s+(.+?)\s+(?:on\s+)?(?:yt|youtube)$/i,
         /^youtube\s+play\s+(.+)/i,
         /^youtube\s+(?!trending|summarize|summary)(.+)/i,
       ],
-      extract: (match) => ({ query: match[1].trim() }),
+      extract: (match) => ({ query: (match[1] || '').trim() }),
     },
     {
       intent: 'summarize',
@@ -25,6 +27,13 @@ export class YouTubeToolsModule implements JarvisModule {
         /^(?:give me a |get )?\s*summary\s+(?:of\s+)?(?:this\s+)?(?:youtube\s+)?(?:video\s+)?(.+)/i,
       ],
       extract: (match) => ({ target: match[1].trim() }),
+    },
+    {
+      intent: 'open-youtube',
+      patterns: [
+        /^(?:open|search|go\s+to)\s+(?:youtube|yt)$/i,
+      ],
+      extract: () => ({}),
     },
     {
       intent: 'trending',
@@ -41,10 +50,16 @@ export class YouTubeToolsModule implements JarvisModule {
   async execute(command: ParsedCommand): Promise<CommandResult> {
     switch (command.action) {
       case 'play': return this.playVideo(command.args.query);
+      case 'open-youtube': return this.openYouTube();
       case 'summarize': return this.summarizeVideo(command.args.target);
       case 'trending': return this.showTrending();
       default: return { success: false, message: `Unknown action: ${command.action}` };
     }
+  }
+
+  private async openYouTube(): Promise<CommandResult> {
+    execSync('open https://www.youtube.com');
+    return { success: true, message: 'Opened YouTube' };
   }
 
   private async searchYouTube(query: string): Promise<{ id: string; title: string } | null> {
