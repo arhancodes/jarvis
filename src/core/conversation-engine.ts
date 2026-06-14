@@ -1,5 +1,5 @@
 import type { CommandResult, ModuleName } from './types.js';
-import { llmStreamChat, isLLMAvailable, getActiveLLMProvider, getLastUsedLabel, FAST_MODEL } from '../utils/llm.js';
+import { llmStreamChat, isLLMAvailable, getActiveLLMProvider, getLastUsedLabel } from '../utils/llm.js';
 import { llmStreamChat as generateText } from '../utils/llm.js';
 import { registry } from './registry.js';
 import { execute } from './executor.js';
@@ -274,10 +274,11 @@ class ConversationEngine {
           }
           }
         },
-        // Speed: conversation runs on the fast model (Haiku) and a tight token
-        // cap. Responses are meant to be 1-3 sentences, so this cuts latency
-        // hard without changing behaviour. The system prompt is still cached.
-        { model: FAST_MODEL, maxTokens: 1024 },
+        // Conversation stays on the default model (Sonnet) for reasoning quality.
+        // Latency is dominated by time-to-first-token (shared by all models), so
+        // Haiku gave no real speedup here — the wins come from prompt caching,
+        // keep-alive, and this tight token cap (faster completion on long replies).
+        { maxTokens: 1024 },
       );
 
 
