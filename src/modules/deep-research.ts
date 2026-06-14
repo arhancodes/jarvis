@@ -339,31 +339,36 @@ async function compileFinalReport(
 // ── Compare Action ──
 
 async function compareItems(items: string[]): Promise<string> {
-  // Research each item
-  const itemReports: Array<{ item: string; findings: string }> = [];
+  // Research every item CONCURRENTLY — items are fully independent, so this is
+  // ~Nx faster than the old sequential loop. Promise.all preserves input order,
+  // so the comparison below is deterministic.
+  const itemReports = await Promise.all(
+    items.map(async (item) => {
+      // web + local search are independent of each other — run them together too
+      const [webResults, localResults] = await Promise.all([
+        webSearch(item),
+        localSearch(item),
+      ]);
+      const allSources = [...webResults, ...localResults];
 
-  for (const item of items) {
-    const webResults = await webSearch(item);
-    const localResults = await localSearch(item);
-    const allSources = [...webResults, ...localResults];
+      const sourcesText = allSources
+        .map((s, i) => `[${i + 1}] ${s.title}: ${s.snippet}`)
+        .join('\n\n');
 
-    const sourcesText = allSources
-      .map((s, i) => `[${i + 1}] ${s.title}: ${s.snippet}`)
-      .join('\n\n');
+      const findings = await llmStreamChat(
+        [
+          {
+            role: 'user',
+            content: `Summarize key facts about "${item}" from these sources:\n\n${sourcesText || 'No sources found.'}\n\nFocus on: features, pros, cons, pricing, performance, and notable aspects.`,
+          },
+        ],
+        'You are a research analyst summarizing findings concisely.',
+        () => {},
+      );
 
-    const findings = await llmStreamChat(
-      [
-        {
-          role: 'user',
-          content: `Summarize key facts about "${item}" from these sources:\n\n${sourcesText || 'No sources found.'}\n\nFocus on: features, pros, cons, pricing, performance, and notable aspects.`,
-        },
-      ],
-      'You are a research analyst summarizing findings concisely.',
-      () => {},
-    );
-
-    itemReports.push({ item, findings });
-  }
+      return { item, findings };
+    }),
+  );
 
   // Produce comparison
   const comparison = await llmStreamChat(
