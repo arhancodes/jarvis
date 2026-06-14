@@ -1,5 +1,5 @@
 import type { CommandResult, ModuleName } from './types.js';
-import { llmStreamChat, isLLMAvailable, getActiveLLMProvider, getLastUsedLabel } from '../utils/llm.js';
+import { llmStreamChat, isLLMAvailable, getActiveLLMProvider, getLastUsedLabel, FAST_MODEL } from '../utils/llm.js';
 import { llmStreamChat as generateText } from '../utils/llm.js';
 import { registry } from './registry.js';
 import { execute } from './executor.js';
@@ -142,7 +142,12 @@ class ConversationEngine {
       // If no actions found, pipeline is complete
       if (turnResult.actions.length === 0) break;
 
-      // Execute actions from this turn
+      // Execute this turn's actions SEQUENTIALLY, in order. Same-turn actions are
+      // NOT guaranteed independent — the LLM can emit dependent chains in one turn
+      // (e.g. "research X and send it to Y"), and many modules mutate shared OS
+      // state (clipboard copy→paste, focus-window→type on the global frontmost
+      // app), so running them concurrently races and corrupts results. Sequential
+      // is correct; callback + result order is preserved.
       const turnCommands: ConversationResponse['commandsExecuted'] = [];
       for (const action of turnResult.actions) {
         if (signal.aborted) break;
@@ -269,6 +274,10 @@ class ConversationEngine {
           }
           }
         },
+        // Speed: conversation runs on the fast model (Haiku) and a tight token
+        // cap. Responses are meant to be 1-3 sentences, so this cuts latency
+        // hard without changing behaviour. The system prompt is still cached.
+        { model: FAST_MODEL, maxTokens: 1024 },
       );
 
 

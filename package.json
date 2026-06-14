@@ -17,14 +17,19 @@
   "dependencies": {
     "@elevenlabs/elevenlabs-js": "^2.38.1",
     "@types/ws": "^8.18.1",
+    "@whiskeysockets/baileys": "^7.0.0-rc.9",
     "chalk": "^5.4.1",
     "dotenv": "^17.3.1",
     "googleapis": "^171.4.0",
+    "pino": "^10.3.1",
     "playwright": "^1.58.2",
+    "qrcode-terminal": "^0.12.0",
+    "undici": "^8.4.1",
     "ws": "^8.19.0"
   },
   "devDependencies": {
     "@types/node": "^22.0.0",
+    "@types/qrcode-terminal": "^0.12.2",
     "tsx": "^4.21.0",
     "typescript": "^5.7.0",
     "vitest": "^4.1.4"

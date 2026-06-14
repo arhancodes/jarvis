@@ -1,5 +1,5 @@
 {
-  "lastCheck": "2026-04-08T10:49:04.007Z",
+  "lastCheck": "2026-06-14T11:28:26.069Z",
   "alerts": [
     {
       "time": "2026-03-30T05:31:27.872Z",
@@ -90,12 +90,292 @@
       "time": "2026-04-05T09:51:31.232Z",
       "type": "critical",
       "message": "arhan.dev is DOWN and unreachable!"
+    },
+    {
+      "time": "2026-04-27T03:36:18.166Z",
+      "type": "critical",
+      "message": "mytradebuddy.com is DOWN and unreachable!"
+    },
+    {
+      "time": "2026-04-27T03:36:18.253Z",
+      "type": "critical",
+      "message": "rewovenapp.com is DOWN and unreachable!"
+    },
+    {
+      "time": "2026-04-27T03:36:18.291Z",
+      "type": "critical",
+      "message": "arhan.dev is DOWN and unreachable!"
+    },
+    {
+      "time": "2026-04-27T12:47:53.092Z",
+      "type": "critical",
+      "message": "mytradebuddy.com is DOWN and unreachable!"
+    },
+    {
+      "time": "2026-04-27T12:47:53.374Z",
+      "type": "critical",
+      "message": "rewovenapp.com is DOWN and unreachable!"
+    },
+    {
+      "time": "2026-04-27T12:47:53.804Z",
+      "type": "critical",
+      "message": "arhan.dev is DOWN and unreachable!"
+    },
+    {
+      "time": "2026-04-28T21:45:13.761Z",
+      "type": "critical",
+      "message": "rewovenapp.com is DOWN and unreachable!"
+    },
+    {
+      "time": "2026-04-28T21:45:34.016Z",
+      "type": "critical",
+      "message": "arhan.dev is DOWN and unreachable!"
+    },
+    {
+      "time": "2026-04-28T23:56:44.166Z",
+      "type": "critical",
+      "message": "mytradebuddy.com is DOWN and unreachable!"
+    },
+    {
+      "time": "2026-04-29T00:29:11.013Z",
+      "type": "critical",
+      "message": "rewovenapp.com is DOWN and unreachable!"
+    },
+    {
+      "time": "2026-04-29T00:29:31.300Z",
+      "type": "critical",
+      "message": "arhan.dev is DOWN and unreachable!"
+    },
+    {
+      "time": "2026-04-29T01:08:46.208Z",
+      "type": "critical",
+      "message": "mytradebuddy.com is DOWN and unreachable!"
+    },
+    {
+      "time": "2026-04-29T01:09:06.502Z",
+      "type": "critical",
+      "message": "rewovenapp.com is DOWN and unreachable!"
+    },
+    {
+      "time": "2026-04-29T01:30:26.854Z",
+      "type": "critical",
+      "message": "arhan.dev is DOWN and unreachable!"
+    },
+    {
+      "time": "2026-04-29T02:14:53.198Z",
+      "type": "critical",
+      "message": "mytradebuddy.com is DOWN and unreachable!"
+    },
+    {
+      "time": "2026-04-29T02:15:13.368Z",
+      "type": "critical",
+      "message": "rewovenapp.com is DOWN and unreachable!"
+    },
+    {
+      "time": "2026-04-29T02:28:46.256Z",
+      "type": "critical",
+      "message": "arhan.dev is DOWN and unreachable!"
+    },
+    {
+      "time": "2026-04-29T03:01:14.171Z",
+      "type": "critical",
+      "message": "mytradebuddy.com is DOWN and unreachable!"
+    },
+    {
+      "time": "2026-04-29T03:01:34.310Z",
+      "type": "critical",
+      "message": "rewovenapp.com is DOWN and unreachable!"
+    },
+    {
+      "time": "2026-04-29T03:01:54.481Z",
+      "type": "critical",
+      "message": "arhan.dev is DOWN and unreachable!"
+    },
+    {
+      "time": "2026-04-29T07:00:10.334Z",
+      "type": "critical",
+      "message": "mytradebuddy.com is DOWN and unreachable!"
+    },
+    {
+      "time": "2026-04-29T07:00:10.924Z",
+      "type": "critical",
+      "message": "rewovenapp.com is DOWN and unreachable!"
+    },
+    {
+      "time": "2026-04-29T07:00:11.330Z",
+      "type": "critical",
+      "message": "arhan.dev is DOWN and unreachable!"
+    },
+    {
+      "time": "2026-04-29T11:19:22.183Z",
+      "type": "critical",
+      "message": "mytradebuddy.com is DOWN and unreachable!"
+    },
+    {
+      "time": "2026-04-29T11:19:22.245Z",
+      "type": "critical",
+      "message": "rewovenapp.com is DOWN and unreachable!"
+    },
+    {
+      "time": "2026-04-29T11:19:22.281Z",
+      "type": "critical",
+      "message": "arhan.dev is DOWN and unreachable!"
+    },
+    {
+      "time": "2026-04-29T12:29:05.665Z",
+      "type": "critical",
+      "message": "mytradebuddy.com is DOWN and unreachable!"
+    },
+    {
+      "time": "2026-04-29T12:29:05.708Z",
+      "type": "critical",
+      "message": "rewovenapp.com is DOWN and unreachable!"
+    },
+    {
+      "time": "2026-04-29T12:29:05.743Z",
+      "type": "critical",
+      "message": "arhan.dev is DOWN and unreachable!"
+    },
+    {
+      "time": "2026-04-29T14:57:58.130Z",
+      "type": "critical",
+      "message": "mytradebuddy.com is DOWN and unreachable!"
+    },
+    {
+      "time": "2026-04-29T14:57:58.223Z",
+      "type": "critical",
+      "message": "rewovenapp.com is DOWN and unreachable!"
+    },
+    {
+      "time": "2026-04-29T14:57:58.270Z",
+      "type": "critical",
+      "message": "arhan.dev is DOWN and unreachable!"
+    },
+    {
+      "time": "2026-04-30T11:16:46.879Z",
+      "type": "critical",
+      "message": "mytradebuddy.com is DOWN and unreachable!"
+    },
+    {
+      "time": "2026-04-30T11:16:46.933Z",
+      "type": "critical",
+      "message": "rewovenapp.com is DOWN and unreachable!"
+    },
+    {
+      "time": "2026-04-30T11:16:46.976Z",
+      "type": "critical",
+      "message": "arhan.dev is DOWN and unreachable!"
+    },
+    {
+      "time": "2026-05-01T03:41:19.853Z",
+      "type": "critical",
+      "message": "mytradebuddy.com is DOWN and unreachable!"
+    },
+    {
+      "time": "2026-05-01T03:41:19.919Z",
+      "type": "critical",
+      "message": "rewovenapp.com is DOWN and unreachable!"
+    },
+    {
+      "time": "2026-05-01T03:41:19.970Z",
+      "type": "critical",
+      "message": "arhan.dev is DOWN and unreachable!"
+    },
+    {
+      "time": "2026-05-01T05:48:43.252Z",
+      "type": "critical",
+      "message": "mytradebuddy.com is DOWN and unreachable!"
+    },
+    {
+      "time": "2026-05-01T05:48:43.449Z",
+      "type": "critical",
+      "message": "rewovenapp.com is DOWN and unreachable!"
+    },
+    {
+      "time": "2026-05-01T05:48:43.552Z",
+      "type": "critical",
+      "message": "arhan.dev is DOWN and unreachable!"
+    },
+    {
+      "time": "2026-05-01T07:43:40.273Z",
+      "type": "critical",
+      "message": "mytradebuddy.com is DOWN and unreachable!"
+    },
+    {
+      "time": "2026-05-01T07:43:40.319Z",
+      "type": "critical",
+      "message": "rewovenapp.com is DOWN and unreachable!"
+    },
+    {
+      "time": "2026-05-01T07:43:40.354Z",
+      "type": "critical",
+      "message": "arhan.dev is DOWN and unreachable!"
+    },
+    {
+      "time": "2026-05-01T08:43:44.630Z",
+      "type": "critical",
+      "message": "mytradebuddy.com is DOWN and unreachable!"
+    },
+    {
+      "time": "2026-05-01T08:43:44.675Z",
+      "type": "critical",
+      "message": "rewovenapp.com is DOWN and unreachable!"
+    },
+    {
+      "time": "2026-05-01T08:43:44.713Z",
+      "type": "critical",
+      "message": "arhan.dev is DOWN and unreachable!"
+    },
+    {
+      "time": "2026-05-01T13:57:55.185Z",
+      "type": "critical",
+      "message": "mytradebuddy.com is DOWN and unreachable!"
+    },
+    {
+      "time": "2026-05-01T13:57:55.308Z",
+      "type": "critical",
+      "message": "rewovenapp.com is DOWN and unreachable!"
+    },
+    {
+      "time": "2026-05-01T13:57:55.370Z",
+      "type": "critical",
+      "message": "arhan.dev is DOWN and unreachable!"
+    },
+    {
+      "time": "2026-05-01T15:17:15.641Z",
+      "type": "critical",
+      "message": "mytradebuddy.com is DOWN and unreachable!"
+    },
+    {
+      "time": "2026-05-01T15:17:15.695Z",
+      "type": "critical",
+      "message": "rewovenapp.com is DOWN and unreachable!"
+    },
+    {
+      "time": "2026-05-01T15:17:15.735Z",
+      "type": "critical",
+      "message": "arhan.dev is DOWN and unreachable!"
+    },
+    {
+      "time": "2026-05-12T12:18:07.967Z",
+      "type": "critical",
+      "message": "mytradebuddy.com is DOWN and unreachable!"
+    },
+    {
+      "time": "2026-05-12T12:18:08.050Z",
+      "type": "critical",
+      "message": "rewovenapp.com is DOWN and unreachable!"
+    },
+    {
+      "time": "2026-05-12T12:18:08.134Z",
+      "type": "critical",
+      "message": "arhan.dev is DOWN and unreachable!"
     }
   ],
   "sslExpiry": {
-    "mytradebuddy.com": "2026-06-24T13:17:49.000Z",
-    "rewovenapp.com": "2026-06-17T17:33:13.000Z",
-    "arhan.dev": "2026-05-27T15:27:14.000Z"
+    "mytradebuddy.com": "2026-08-31T13:21:49.000Z",
+    "rewovenapp.com": "2026-08-16T20:20:52.000Z",
+    "arhan.dev": "2026-07-26T15:20:21.000Z"
   },
   "knownBreaches": []
 }

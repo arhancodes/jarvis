@@ -56,6 +56,9 @@ const MAX_ENTRIES = 10000;
 // LLM pricing per 1M tokens (input / output) in USD
 const LLM_PRICING: Record<string, Record<string, { input: number; output: number }>> = {
   claude: {
+    'claude-sonnet-4-6': { input: 3.0, output: 15.0 },
+    'claude-haiku-4-5': { input: 1.0, output: 5.0 },
+    'claude-opus-4-8': { input: 5.0, output: 25.0 },
     'claude-sonnet-4-20250514': { input: 3.0, output: 15.0 },
     'claude-3-5-sonnet': { input: 3.0, output: 15.0 },
     'claude-3-5-sonnet-20241022': { input: 3.0, output: 15.0 },

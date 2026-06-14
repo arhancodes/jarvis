@@ -76,6 +76,10 @@ import { discoverGeneratedModules, bootModules } from './core/registry.js';
 import { loadPluginsFromConfig } from './core/plugin-loader.js';
 import { startSidecar, stopSidecar } from './utils/rust-bridge.js';
 import { popUndo, peekUndo, listUndoStack } from './core/undo-stack.js';
+import { homedir } from 'os';
+import { join as joinPath } from 'path';
+import qrcodeTerminal from 'qrcode-terminal';
+import { startWhatsApp } from './utils/whatsapp-baileys.js';
 
 function getAliasPath(): string { return configPath('aliases.json'); }
 function getStartupPath(): string { return configPath('startup.json'); }
@@ -401,6 +405,16 @@ export function boot(): void {
 
   // Start Rust sidecar for fast vector search (non-blocking, falls back to TS)
   startSidecar().catch((err) => log.warn('Sidecar startup failed', err));
+
+  // Open the persistent WhatsApp connection (Baileys). First run prints a QR to
+  // scan; auth persists to ~/.jarvis/whatsapp-auth so later boots reconnect silently.
+  startWhatsApp({
+    authDir: joinPath(homedir(), '.jarvis', 'whatsapp-auth'),
+    onQR: (qr) => {
+      console.log(fmt.dim('\n  [whatsapp] Scan this QR with WhatsApp → Linked Devices:\n'));
+      qrcodeTerminal.generate(qr, { small: true });
+    },
+  }).catch((err) => log.warn('WhatsApp startup failed', err));
 
   // Restore persisted scheduled tasks
   scheduler.restore();

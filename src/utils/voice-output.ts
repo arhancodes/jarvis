@@ -202,7 +202,9 @@ async function speakElevenLabs(text: string): Promise<boolean> {
     });
 
     if (!response.ok) {
-      // Quota exceeded or other error — signal failure so we can fallback
+      // Quota/plan error or bad voice — make it visible (it was silent before)
+      // then signal failure so we can fall back to Edge/macOS.
+      log.warn(`ElevenLabs TTS failed (${response.status}) — falling back. A 402 means the voice needs a paid plan.`);
       return false;
     }
 

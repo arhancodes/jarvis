@@ -1,9 +1,15 @@
+import { fetch as undiciFetch, Agent } from 'undici';
 import { readJsonConfig } from './config.js';
 import { createLogger } from './logger.js';
 
 const log = createLogger('llm');
 
 // ── LLM Provider (Claude API) ──
+
+// Default models. Sonnet for real conversation; Haiku for short/cheap work
+// (message composition, intent classification, yes/no routing).
+export const DEFAULT_MODEL = 'claude-sonnet-4-6';
+export const FAST_MODEL = 'claude-haiku-4-5';
 
 interface LLMConfig {
   provider: string;
@@ -13,7 +19,7 @@ interface LLMConfig {
 
 let config: LLMConfig = {
   provider: 'claude',
-  claudeModel: 'claude-3-5-sonnet-20241022',
+  claudeModel: DEFAULT_MODEL,
 };
 
 function loadLLMConfig(): void {
@@ -24,16 +30,49 @@ function loadLLMConfig(): void {
 // Load config on module import
 loadLLMConfig();
 
+// Keep-alive connection pool so we don't pay a TLS handshake per message.
+// JARVIS is long-lived, so idle connections to the API are kept warm.
+//
+// NOTE: we must use undici's OWN fetch with an explicit `dispatcher`. The
+// userland `undici` package and Node's built-in global `fetch` keep their
+// global dispatchers in DIFFERENT slots, so `setGlobalDispatcher` from this
+// package would NOT attach to a bare `fetch()` call — it'd be a silent no-op.
+// Passing the agent per-call guarantees the keep-alive pool is actually used.
+const keepAliveAgent = new Agent({
+  keepAliveTimeout: 60_000, // keep idle sockets 60s
+  keepAliveMaxTimeout: 600_000,
+});
+
+export interface LLMOptions {
+  /** Override the model (e.g. FAST_MODEL for cheap work). */
+  model?: string;
+  /** Cache the system prompt with an ephemeral breakpoint (default: true). */
+  cache?: boolean;
+  /** Max output tokens (default 4096). Lower = faster completion for short replies. */
+  maxTokens?: number;
+}
+
 async function claudeStreamChat(
   messages: Array<{ role: 'user' | 'assistant'; content: string }>,
   systemPrompt: string,
   onToken: (token: string) => void,
+  opts: LLMOptions = {},
 ): Promise<string> {
   if (!config.claudeApiKey) {
     throw new Error('Claude API key not configured. Set claudeApiKey in config/llm-config.json');
   }
 
-  const response = await fetch('https://api.anthropic.com/v1/messages', {
+  const model = opts.model || config.claudeModel || DEFAULT_MODEL;
+  const cache = opts.cache !== false;
+
+  // System prompt as an array with a cache breakpoint. The system prompt is the
+  // large, byte-stable part of every call — caching it cuts input cost/latency.
+  // Below ~1024 tokens the API simply ignores the breakpoint (no error).
+  const system = cache
+    ? [{ type: 'text', text: systemPrompt, cache_control: { type: 'ephemeral' } }]
+    : systemPrompt;
+
+  const response = await undiciFetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
     headers: {
       'x-api-key': config.claudeApiKey,
@@ -41,12 +80,13 @@ async function claudeStreamChat(
       'content-type': 'application/json',
     },
     body: JSON.stringify({
-      model: config.claudeModel || 'claude-3-5-sonnet-20241022',
-      max_tokens: 4096,
-      system: systemPrompt,
-      messages: messages,
+      model,
+      max_tokens: opts.maxTokens ?? 4096,
+      system,
+      messages,
       stream: true,
     }),
+    dispatcher: keepAliveAgent,
   });
 
   if (!response.ok) {
@@ -80,7 +120,17 @@ async function claudeStreamChat(
           const parsed = JSON.parse(data) as {
             type: string;
             delta?: { type: string; text?: string };
+            message?: { usage?: Record<string, number> };
           };
+
+          // Confirm caching is working — logged at debug level only.
+          if (parsed.type === 'message_start' && parsed.message?.usage) {
+            const u = parsed.message.usage;
+            log.debug(
+              `usage model=${model} cache_read=${u.cache_read_input_tokens ?? 0} ` +
+                `cache_write=${u.cache_creation_input_tokens ?? 0} input=${u.input_tokens ?? 0}`,
+            );
+          }
 
           if (parsed.type === 'content_block_delta' && parsed.delta?.text) {
             fullText += parsed.delta.text;
@@ -104,13 +154,26 @@ export function getLastUsedLabel(): string {
   return lastUsedLabel;
 }
 
+/**
+ * Stream a chat completion from Claude.
+ * @param opts.model  Override the model (e.g. FAST_MODEL for short/cheap work).
+ * @param opts.cache  Cache the system prompt (default true).
+ */
 export async function llmStreamChat(
   messages: Array<{ role: 'user' | 'assistant'; content: string }>,
   systemPrompt: string,
   onToken: (token: string) => void,
+  opts: LLMOptions = {},
 ): Promise<string> {
   lastUsedLabel = 'Claude (via API)';
-  return claudeStreamChat(messages, systemPrompt, onToken);
+  return claudeStreamChat(messages, systemPrompt, onToken, opts);
+}
+
+/** Convenience: one-shot completion on the fast/cheap model (Haiku). */
+export async function llmQuick(prompt: string, systemPrompt = 'You are a helpful assistant.'): Promise<string> {
+  return claudeStreamChat([{ role: 'user', content: prompt }], systemPrompt, () => {}, {
+    model: FAST_MODEL,
+  });
 }
 
 export async function isLLMAvailable(): Promise<boolean> {
