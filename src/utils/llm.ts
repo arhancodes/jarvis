@@ -52,8 +52,13 @@ export interface LLMOptions {
   maxTokens?: number;
 }
 
+// Anthropic message content blocks (text + images for vision).
+export type ContentBlock =
+  | { type: 'text'; text: string }
+  | { type: 'image'; source: { type: 'base64'; media_type: string; data: string } };
+
 async function claudeStreamChat(
-  messages: Array<{ role: 'user' | 'assistant'; content: string }>,
+  messages: Array<{ role: 'user' | 'assistant'; content: string | ContentBlock[] }>,
   systemPrompt: string,
   onToken: (token: string) => void,
   opts: LLMOptions = {},
@@ -174,6 +179,28 @@ export async function llmQuick(prompt: string, systemPrompt = 'You are a helpful
   return claudeStreamChat([{ role: 'user', content: prompt }], systemPrompt, () => {}, {
     model: FAST_MODEL,
   });
+}
+
+/**
+ * Vision: send one or more base64 images plus a prompt to Claude. Reads images
+ * DIRECTLY — no OCR step — so it's both faster (one call) and more accurate
+ * (sees layout, buttons, icons). Used for screen reading.
+ */
+export async function llmVision(
+  images: Array<{ data: string; mediaType?: string }>,
+  prompt: string,
+  systemPrompt = 'You are JARVIS analyzing a screenshot. Be concise and specific.',
+  opts: LLMOptions = {},
+): Promise<string> {
+  const content: ContentBlock[] = [
+    ...images.map((im) => ({
+      type: 'image' as const,
+      source: { type: 'base64' as const, media_type: im.mediaType || 'image/png', data: im.data },
+    })),
+    { type: 'text' as const, text: prompt },
+  ];
+  lastUsedLabel = 'Claude (vision)';
+  return claudeStreamChat([{ role: 'user', content }], systemPrompt, () => {}, opts);
 }
 
 export async function isLLMAvailable(): Promise<boolean> {

@@ -1,11 +1,11 @@
 import type { JarvisModule, ParsedCommand, CommandResult, PatternDefinition } from '../core/types.js';
 import { run } from '../utils/shell.js';
 import { fmt } from '../utils/formatter.js';
-import { isLLMAvailable, llmStreamChat } from '../utils/llm.js';
+import { isLLMAvailable, llmStreamChat, llmVision } from '../utils/llm.js';
 import { conversationEngine } from '../core/conversation-engine.js';
 import { tmpdir } from 'os';
 import { join } from 'path';
-import { unlinkSync, existsSync } from 'fs';
+import { unlinkSync, existsSync, readFileSync } from 'fs';
 import { createLogger } from '../utils/logger.js';
 
 const log = createLogger('screen-awareness');
@@ -59,6 +59,28 @@ print(text)
     throw new Error('OCR failed. macOS Vision could not read the screen.');
   } finally {
     try { if (existsSync(tmpFile)) unlinkSync(tmpFile); } catch (err) { log.debug('Failed to clean up OCR temp file', err); }
+  }
+}
+
+/**
+ * Capture a screenshot and return it as base64 PNG for Claude vision.
+ * Downscaled to 1568px (Claude's optimal max) so it's small and fast — no OCR
+ * pass needed. Exported so other modules can reuse the vision path.
+ */
+export async function captureScreenImage(): Promise<{ data: string; mediaType: string }> {
+  const tmpFile = join(tmpdir(), `jarvis-shot-${Date.now()}.png`);
+  try {
+    const capture = await run(`screencapture -x "${tmpFile}"`, { timeout: 5000 });
+    if (capture.exitCode !== 0 || !existsSync(tmpFile)) {
+      throw new Error('Failed to capture screenshot');
+    }
+    // Downscale so the largest side is 1568px — keeps the image small (faster
+    // upload) without losing detail Claude would use. sips is built into macOS.
+    await run(`sips -Z 1568 "${tmpFile}" >/dev/null 2>&1`, { timeout: 5000 });
+    const data = readFileSync(tmpFile).toString('base64');
+    return { data, mediaType: 'image/png' };
+  } finally {
+    try { if (existsSync(tmpFile)) unlinkSync(tmpFile); } catch (err) { log.debug('Failed to clean up screenshot temp file', err); }
   }
 }
 
@@ -157,27 +179,47 @@ export class ScreenAwarenessModule implements JarvisModule {
   }
 
   private async summarizeScreen(): Promise<CommandResult> {
-    try {
-      console.log(fmt.dim('  [screen] Capturing screen...'));
-      const text = await captureScreenText();
-      if (!text) {
-        return { success: false, message: 'No text found on screen.' };
-      }
-
-      return this.askOllamaAboutScreen(text, 'Briefly summarize what is on this screen in 2-3 sentences. What app or page is the user looking at and what is the main content?');
-    } catch (err) {
-      return { success: false, message: `Screen error: ${(err as Error).message}` };
-    }
+    return this.analyzeScreen(
+      'Briefly summarize what is on this screen in 2-3 sentences. What app or page is the user looking at, and what is the main content?',
+    );
   }
 
   private async askAboutScreen(question: string): Promise<CommandResult> {
+    return this.analyzeScreen(question);
+  }
+
+  /**
+   * Analyze the screen and answer a question. Tries Claude VISION first — one
+   * call that reads the screenshot directly (faster, and it sees layout/buttons/
+   * icons OCR throws away) — and falls back to OCR -> text LLM if vision fails.
+   */
+  private async analyzeScreen(question: string): Promise<CommandResult> {
+    if (!(await isLLMAvailable())) {
+      return { success: false, message: 'Claude API is not configured.' };
+    }
+
+    // Vision path (preferred)
     try {
-      console.log(fmt.dim('  [screen] Capturing screen...'));
+      console.log(fmt.dim('  [screen] Looking at your screen...'));
+      const img = await captureScreenImage();
+      const answer = await llmVision(
+        [img],
+        question,
+        "You are JARVIS analyzing the user's screen. Answer concisely (2-3 sentences). Be specific about what you see — apps, windows, content, UI elements. No markdown.",
+      );
+      if (answer?.trim()) {
+        return { success: true, message: answer.trim(), voiceMessage: answer.trim() };
+      }
+    } catch (err) {
+      log.debug('Vision screen analysis failed — falling back to OCR', err);
+    }
+
+    // OCR fallback
+    try {
       const text = await captureScreenText();
       if (!text) {
-        return { success: false, message: 'No text found on screen.' };
+        return { success: false, message: "I can't see anything readable on your screen." };
       }
-
       return this.askOllamaAboutScreen(text, question);
     } catch (err) {
       return { success: false, message: `Screen error: ${(err as Error).message}` };

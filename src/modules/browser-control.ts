@@ -4,6 +4,8 @@ import { fmt } from '../utils/formatter.js';
 import { join } from 'path';
 import { homedir } from 'os';
 import { createLogger } from '../utils/logger.js';
+import { fetchAndExtract } from '../utils/web-extract.js';
+import { llmStreamChat, FAST_MODEL } from '../utils/llm.js';
 
 const log = createLogger('browser-control');
 
@@ -39,6 +41,17 @@ export class BrowserControlModule implements JarvisModule {
         /^(?:look\s+up|find\s+(?:online|on\s+the\s+web))\s+(.+)/i,
       ],
       extract: (match) => ({ query: match[1].trim() }),
+    },
+    {
+      // Read/summarize a URL DIRECTLY — fetch + Claude extract, no browser launch.
+      // Matches only when a domain/URL is present, so "read page" still hits read-page below.
+      intent: 'read-url',
+      patterns: [
+        /^(?:read|summari[sz]e|get)\s+(https?:\/\/\S+)$/i,
+        /^(?:read|summari[sz]e)\s+((?:www\.)?[\w-]+\.\w{2,}\S*)$/i,
+        /^what\s+does\s+(https?:\/\/\S+|(?:www\.)?[\w-]+\.\w{2,}\S*)\s+say(?:\s+about\s+(.+))?$/i,
+      ],
+      extract: (match) => ({ url: match[1].trim(), question: (match[2] || '').trim() }),
     },
     {
       intent: 'read-page',
@@ -88,6 +101,7 @@ export class BrowserControlModule implements JarvisModule {
     switch (command.action) {
       case 'browse':      return this.browse(command.args.url);
       case 'google':      return this.google(command.args.query);
+      case 'read-url':    return this.readUrl(command.args.url, command.args.question);
       case 'read-page':   return this.readPage();
       case 'click':       return this.click(command.args.target);
       case 'fill':        return this.fill(command.args.selector, command.args.value);
@@ -95,6 +109,42 @@ export class BrowserControlModule implements JarvisModule {
       case 'close':       return this.close();
       default:
         return { success: false, message: `Unknown browser action: ${command.action}` };
+    }
+  }
+
+  /**
+   * Read/summarize a URL directly with fetch + Claude — no browser launch (fast).
+   * Falls back to a real browser only for JS-heavy / blocked pages.
+   */
+  private async readUrl(url: string, question?: string): Promise<CommandResult> {
+    if (!url.startsWith('http')) url = `https://${url}`;
+    const instruction = question?.trim()
+      ? question.trim()
+      : 'Summarize this page: what is it, and the key points. 3-5 sentences.';
+
+    process.stdout.write(fmt.dim(`  Reading ${url}...\n`));
+    const result = await fetchAndExtract(url, instruction);
+    if (result.ok && result.text) {
+      return { success: true, message: result.text, voiceMessage: result.text };
+    }
+
+    // Fall back to a real browser for JS-rendered / blocked pages
+    log.debug(`fetch+extract failed (${result.error}) — falling back to browser`);
+    process.stdout.write(fmt.dim('  (needs a browser — launching...)\n'));
+    try {
+      const { page } = await getBrowser(PROFILE);
+      await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 30000 });
+      await page.waitForTimeout(1500);
+      const text = await page.evaluate(() => document.body.innerText.slice(0, 8000));
+      const extract = await llmStreamChat(
+        [{ role: 'user', content: `${instruction}\n\nPage content:\n${text}` }],
+        'You extract and summarize web pages concisely. No markdown headers.',
+        () => {},
+        { model: FAST_MODEL, maxTokens: 1024 },
+      );
+      return { success: true, message: extract.trim(), voiceMessage: extract.trim() };
+    } catch (err) {
+      return { success: false, message: `Could not read ${url}: ${(err as Error).message}` };
     }
   }
 
