@@ -42,10 +42,10 @@ Say "Jarvis" to activate voice control, or type commands directly
 | **Security monitoring** | Always-on breach monitor, network guardian, threat detection |
 | **Conversational AI** | Multi-turn conversations powered by Claude API — streams responses, executes actions mid-conversation, remembers context |
 | **Voice assistant** | Always-on wake word detection ("Jarvis"), on-device speech recognition, text-to-speech responses via Edge TTS or ElevenLabs |
-| **Screen awareness** | OCR-based screen reading — JARVIS can see what's on your screen and respond to it |
+| **Screen awareness** | Claude-vision screen reading — sees the screenshot directly (no OCR), understanding layout, buttons, and content; OCR fallback offline |
 | **Screen interaction** | Process selected text with AI — paraphrase, rewrite, fix grammar, translate |
-| **Browser automation** | Full Playwright-powered browser control — navigate, search, click, fill forms, read pages, take screenshots |
-| **WhatsApp** | Send and read WhatsApp messages through browser automation |
+| **Browser automation** | Read a URL with fetch + Claude (no browser, seconds faster), plus full Playwright control — navigate, search, click, fill forms, screenshots |
+| **WhatsApp** | Instant sub-second messaging over the multi-device protocol (Baileys) — no browser; scan a QR once to link |
 | **Smart routines** | Voice-triggered routines like "good morning" and "good night" that chain multiple actions |
 | **Multi-device** | Apple Watch and iPhone apps connect via AIM (Advanced Idea Mechanics) WebSocket relay |
 | **Menubar app** | Native macOS menubar icon showing JARVIS status, voice state, and last command |
@@ -145,6 +145,9 @@ jarvis> list apps
 ### Browser Control
 
 ```
+jarvis> summarize stripe.com
+  ✓ (reads the page with fetch + Claude — no browser — and summarizes it)
+
 jarvis> browse youtube.com
   ✓ Navigated to https://youtube.com
 
@@ -152,19 +155,20 @@ jarvis> search "TypeScript tutorials"
   ✓ Searched Google for "TypeScript tutorials"
 
 jarvis> read this page
-  ✓ (extracts and displays page content)
+  ✓ (extracts content from the open browser page)
 
 jarvis> screenshot
   ✓ Screenshot saved to jarvis-screenshot-1710432000.png
 ```
 
-Full browser automation powered by Playwright. Navigate, search, click elements, fill forms, read page content, and take screenshots
+Reading a URL uses **fetch + Claude extraction — no browser launch**, so it's seconds faster; it falls back to a real browser only for JS-heavy pages. Interactive automation (navigate, click, fill, screenshot) runs on Playwright.
 
 | Command | What it does |
 |---------|-------------|
-| `browse <url>` / `go to <url>` | Navigate to a URL |
+| `read <url>` / `summarize <url>` | Read & summarize a page with fetch + Claude (no browser; browser fallback for JS-heavy pages) |
+| `browse <url>` / `go to <url>` | Open a URL in the browser |
 | `search <query>` | Google search |
-| `read this page` | Extract page content |
+| `read this page` | Extract content from the open browser page |
 | `click <element>` | Click an element on the page |
 | `fill <field> with <value>` | Fill a form field |
 | `screenshot` | Take a browser screenshot |
@@ -405,13 +409,16 @@ Auto-detects whether Spotify or Apple Music is running
 
 ```
 jarvis> what's on my screen
-  ✓ (OCR reads screen content and describes what it sees)
+  ✓ (Claude vision reads the screenshot directly and describes it)
+
+jarvis> summarize my screen
+  ✓ (2-3 sentence summary of the current screen)
 
 jarvis> read screen
   ✓ (extracts all visible text via OCR)
 ```
 
-Uses OCR to read and understand screen content. The conversation engine can inject screen context into conversations for context-aware responses.
+Reads your screen with **Claude vision** — it sees the screenshot directly (one call, no OCR step), so it understands layout, buttons, and content, not just text. Screenshots are downscaled to 1568px for speed. OCR (macOS Vision / Tesseract) stays as an offline fallback, and the conversation engine can inject screen context into conversations for context-aware responses.
 
 ### Screen Interaction
 
@@ -431,14 +438,20 @@ Processes currently selected text with AI for rewriting, grammar fixes, translat
 ### WhatsApp
 
 ```
-jarvis> send whatsapp to John: Hey, running late!
-  ✓ Message sent to John
+jarvis> whatsapp login
+  ✓ Scan the QR code in the console once — auth persists after that
+
+jarvis> message mom running late
+  ✓ Message sent to mom
+
+jarvis> whatsapp dad: call me
+  ✓ Message sent to dad
 
 jarvis> read whatsapp
   ✓ Recent messages: ...
 ```
 
-Send and read WhatsApp messages through automated browser control.
+Sends WhatsApp messages over the **multi-device protocol (Baileys)** — a persistent in-process socket, **no browser**, so sends are sub-second instead of 7–15s. Scan a QR code once to link; auth is saved to `~/.jarvis/whatsapp-auth` and reconnects silently afterward. Contact names resolve to numbers via `config/whatsapp-contacts.json` or macOS Contacts.
 
 ### Weather & News
 
