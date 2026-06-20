@@ -156,7 +156,8 @@ export class CodingAgentModule implements JarvisModule {
       patterns: [
         /^(?:autonomous(?:ly)?\s+)?code\s+(?:agent\s+)?(.+)/i,
         /^coding\s+agent\s+(.+)/i,
-        /^(?:add|implement|create)\s+(.+?)(?:\s+in\s+(.+))?$/i,
+        // "create/add module ..." belongs to self-improve, not the coding agent.
+        /^(?:add|implement|create)\s+(?!(?:a\s+)?module\b)(.+?)(?:\s+in\s+(.+))?$/i,
       ],
       extract: (_match, raw) => {
         const inMatch = raw.match(/\s+in\s+((?:~|\/)[^\s]+)\s*$/i);

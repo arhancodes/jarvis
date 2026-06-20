@@ -235,7 +235,8 @@ export class SystemControlModule implements JarvisModule {
       intent: 'notify',
       patterns: [
         /^(?:send\s+(?:a\s+)?)?notif(?:y|ication)\s+(.+)/i,
-        /^(?:alert|remind)\s+(?:me\s+)?(.+)/i,
+        // "alert" only — "remind me ..." belongs to the timer module (timed reminders).
+        /^alert\s+(?:me\s+)?(.+)/i,
       ],
       extract: (match) => ({ message: match[1] }),
     },
