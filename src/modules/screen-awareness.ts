@@ -119,13 +119,14 @@ export class ScreenAwarenessModule implements JarvisModule {
     {
       intent: 'suggest',
       patterns: [
-        /^what\s+do\s+you\s+think[?]?$/i,
-        /^what\s+do\s+you\s+think\s+(?:about\s+)?(?:this|that)[?]?$/i,
-        /^(?:any|give\s+me)\s+(?:suggestions?|feedback|thoughts?|input)[?]?$/i,
-        /^how\s+does\s+(?:this|that)\s+look[?]?$/i,
-        /^(?:is\s+this|does\s+this\s+look)\s+(?:good|right|ok|correct|fine)[?]?$/i,
-        /^(?:review|check|look\s+at)\s+(?:this|what\s+i(?:'m|\s+am)\s+(?:typing|writing|working\s+on|doing))/i,
-        /^help\s+(?:me\s+)?(?:with\s+)?this$/i,
+        // Only fire when the user EXPLICITLY references their screen / code / work.
+        // Bare "what do you think" is intentionally NOT here — that's a general
+        // question and must go to Claude (e.g. "what do you think about Trump").
+        /^what\s+do\s+you\s+think\s+(?:of|about)\s+(?:my\s+screen|this\s+(?:code|screen|page|error))\b/i,
+        /^(?:any\s+|give\s+me\s+)?(?:thoughts|feedback|suggestions?|input)\s+(?:on|about)\s+(?:my\s+screen|this\s+(?:code|screen|page|error)|what\s+i(?:'m| am)\s+working\s+on)\b/i,
+        /^(?:review|check|look\s+at)\s+(?:my\s+screen|this\s+(?:code|screen|page)|what\s+i(?:'m| am)\s+(?:typing|writing|working\s+on|doing))\b/i,
+        /^how\s+does\s+(?:my\s+screen|this\s+(?:code|page))\s+look[?]?$/i,
+        /^what\s+(?:am\s+i|do\s+you\s+think\s+i(?:'m| am))\s+working\s+on[?]?$/i,
       ],
       extract: () => ({}),
     },
