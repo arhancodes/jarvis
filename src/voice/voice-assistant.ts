@@ -706,8 +706,19 @@ export class VoiceAssistant {
 
         // Speak the response — prefer voiceMessage (voice-friendly) over message (visual)
         if (this.interrupted) break;
-        const responseText = result.voiceMessage
+        let responseText = result.voiceMessage
           || (result.streamed ? (getLastStreamedText() || result.message || '') : result.message);
+
+        // GLOBAL SAFEGUARD: never read a long list/dump aloud. If a handler didn't
+        // supply a voice-friendly message and its output is long or multi-line
+        // (process lists, schedules, clipboard, search results, OCR, etc.), speak
+        // a short summary instead — the full text is already printed to the terminal.
+        if (!result.voiceMessage && !result.streamed && responseText) {
+          const lineCount = responseText.split('\n').length;
+          if (responseText.length > 320 || lineCount > 4) {
+            responseText = 'Done, sir — the details are on your screen.';
+          }
+        }
 
         if (responseText) {
           this.ignoreStartTime = Date.now();
