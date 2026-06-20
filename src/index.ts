@@ -116,6 +116,7 @@ function printHelp(): void {
   console.log('    voice / listen      Enter voice command mode');
   console.log('    voice on            Start always-on voice assistant');
   console.log('    voice off           Stop voice assistant');
+  console.log('    voice aware on/off  Only respond when addressed (on) vs always (off)');
   console.log('    voice status        Voice assistant status');
   console.log('    watch on            Start screen monitoring');
   console.log('    watch off           Stop screen monitoring');
@@ -602,9 +603,21 @@ export function boot(): void {
       return;
     }
 
+    if (/^voice\s+aware\s+(on|off)$/i.test(input)) {
+      const on = /on$/i.test(input);
+      voiceAssistant?.setAwareness(on);
+      console.log(fmt.success(
+        on
+          ? 'Conversational awareness ON — JARVIS only responds when you actually address it.'
+          : 'Conversational awareness OFF — JARVIS responds to every command after the wake word.',
+      ));
+      return;
+    }
+
     if (/^voice\s+status$/i.test(input)) {
       const watcher = voiceAssistant?.getScreenWatcher();
       console.log(fmt.label('Voice Assistant', voiceAssistant?.isRunning() ? 'active (listening)' : 'inactive'));
+      console.log(fmt.label('Awareness', voiceAssistant?.getAwareness() ? 'on (responds only when addressed)' : 'off'));
       console.log(fmt.label('Screen Watcher', watcher?.isActive() ? 'active (monitoring)' : 'inactive'));
       return;
     }

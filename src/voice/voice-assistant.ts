@@ -572,6 +572,22 @@ export class VoiceAssistant {
   private async isAddressed(text: string): Promise<boolean> {
     const clean = text.replace(/\bjarvis\b/gi, '').replace(/[^\w\s]/g, '').trim();
     if (clean.length < 2) return false; // bare wake word — stay quiet, keep listening
+
+    // FAST PATH: a recognized ACTION command is unambiguously addressed — skip
+    // the LLM entirely so real commands stay instant. Excludes ai-chat (questions,
+    // the "ai" keyword) and long sentences with an incidental buried keyword
+    // (e.g. "...an AI built by...") — those are exactly the conversational cases
+    // that cause false activations, so the classifier judges them instead.
+    try {
+      const parsed = await parse(clean);
+      const words = clean.split(/\s+/).length;
+      if (parsed && parsed.module !== 'ai-chat') {
+        if (parsed.confidence >= 1.0) return true; // exact command pattern
+        if (parsed.confidence >= 0.6 && words <= 3) return true; // short keyword command
+      }
+    } catch { /* fall through to the classifier */ }
+
+    // Ambiguous / conversational — let the fast model decide.
     try {
       const verdict = await llmQuick(
         `An always-listening assistant named JARVIS heard this in the room: "${text}"\n\n` +
