@@ -281,7 +281,8 @@ export class SystemControlModule implements JarvisModule {
       intent: 'say-text',
       patterns: [
         /^say\s+(.+)/i,
-        /^(?:speak|announce|read)\s+(.+)/i,
+        // "read X" is NOT included — it collides with "read my screen/whatsapp/page/email".
+        /^(?:speak|announce)\s+(.+)/i,
       ],
       extract: (match) => ({ text: match[1] }),
     },

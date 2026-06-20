@@ -92,7 +92,7 @@ export class ScreenAwarenessModule implements JarvisModule {
     {
       intent: 'read-screen',
       patterns: [
-        /^(?:read|what(?:'s| is) on)\s+(?:my\s+|the\s+)?screen$/i,
+        /^(?:read|what(?:'?s| is)\s+on)\s+(?:my\s+|the\s+)?screen$/i,
         /^(?:what am i|what(?:'s| is))\s+(?:looking at|reading|viewing)$/i,
         /^screen\s+(?:text|content|read)$/i,
         /^ocr$/i,

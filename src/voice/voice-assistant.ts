@@ -734,8 +734,10 @@ export class VoiceAssistant {
     let buffer = '';
     let streamDone = false;
 
-    // Only inject screen context if the user's question references the screen
-    const screenKeywords = /\b(screen|this|that|it|here|display|showing|see|look|what(?:'s| is)\s+(?:on|that)|read|summarize|explain\s+(?:this|that)|error|bug|code|page|window|text|selection)\b/i;
+    // Only inject screen context when the user EXPLICITLY references the screen or
+    // on-screen content. Loose words like "this/that/it/see" appear in ordinary
+    // questions ("what do you think about it") and must NOT pull in the screen.
+    const screenKeywords = /\bscreen\b|\b(?:this|that|the)\s+(?:code|error|bug|page|window|selection|text|file|line|function)\b|\bmy\s+selection\b/i;
     let screenContext: string | undefined;
     if (screenKeywords.test(prompt)) {
       screenContext = this.screenWatcher.getScreenContext();

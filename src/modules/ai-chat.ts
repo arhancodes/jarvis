@@ -40,8 +40,10 @@ export class AIChatModule implements JarvisModule {
     {
       intent: 'summarize',
       patterns: [
-        /^summarize\s+(?:file\s+)?(?!(?:this|that|it|the\s+text|selection|the\s+selection)\s*$)(.+)/i,
-        /^(?:give\s+me\s+a\s+)?summary\s+(?:of\s+)?(?!(?:this|that|it|the\s+text|selection)\s*$)(.+)/i,
+        // Exclude screen references (-> screen-awareness vision) and bare URLs
+        // (-> browser-control read-url, the browserless fetch).
+        /^summarize\s+(?:file\s+)?(?!(?:this|that|it|the\s+text|selection|the\s+selection|(?:my\s+|the\s+)?screen|(?:https?:\/\/)?[\w-]+\.(?:com|org|net|io|dev|ai|co|app|gov|edu|me)\S*)\s*$)(.+)/i,
+        /^(?:give\s+me\s+a\s+)?summary\s+(?:of\s+)?(?!(?:this|that|it|the\s+text|selection|(?:my\s+|the\s+)?screen)\s*$)(.+)/i,
         /^tldr\s+(.+)/i,
       ],
       extract: (match) => ({ file: (match[1] || match[2] || match[3]).trim() }),
@@ -49,7 +51,7 @@ export class AIChatModule implements JarvisModule {
     {
       intent: 'explain',
       patterns: [
-        /^explain\s+(?:file\s+)?(?!(?:this|that|it|the\s+text|selection|the\s+selection)\s*$)(.+)/i,
+        /^explain\s+(?:file\s+)?(?!(?:this|that|it|the\s+text|selection|the\s+selection|(?:my\s+|the\s+)?screen)\s*$)(.+)/i,
         /^(?:what\s+(?:is|does|are))\s+(.+)/i,
       ],
       extract: (match) => ({ file: (match[1] || match[2]).trim() }),
