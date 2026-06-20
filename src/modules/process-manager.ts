@@ -114,12 +114,12 @@ export class ProcessManagerModule implements JarvisModule {
           : `ps -Ao pid,pcpu,pmem,comm -m | head -${count + 1}`
       );
       if (macResult.stdout) {
-        return { success: true, message: `Top ${count} by ${label}:\n${macResult.stdout}` };
+        return { success: true, message: `Top ${count} by ${label}:\n${macResult.stdout}`, voiceMessage: `The top ${count} processes by ${label} are on your screen, sir.` };
       }
       return { success: false, message: 'Could not retrieve process list' };
     }
 
-    return { success: true, message: `Top ${count} by ${label}:\n${result.stdout}` };
+    return { success: true, message: `Top ${count} by ${label}:\n${result.stdout}`, voiceMessage: `The top ${count} processes by ${label} are on your screen, sir.` };
   }
 
   private async checkPort(port: string): Promise<CommandResult> {
@@ -156,7 +156,11 @@ export class ProcessManagerModule implements JarvisModule {
 
   private async listProcesses(): Promise<CommandResult> {
     const result = await run('ps -Ao pid,pcpu,pmem,comm -r | head -21');
-    return { success: true, message: `Running processes (top 20):\n${result.stdout}` };
+    return {
+      success: true,
+      message: `Running processes (top 20):\n${result.stdout}`,
+      voiceMessage: 'The top running processes are on your screen, sir.',
+    };
   }
 
   getHelp(): string {

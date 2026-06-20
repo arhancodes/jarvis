@@ -32,7 +32,8 @@ export class AIChatModule implements JarvisModule {
     {
       intent: 'ask',
       patterns: [
-        /^(?:ask|ai|chat)\s+(.+)/i,
+        // Exclude "ai status" -> that's the ai-status intent below.
+        /^(?:ask|ai|chat)\s+(?!status\b)(.+)/i,
         /^(?:hey\s+)?jarvis[,]?\s+(?:can you|please|could you)\s+(.+)/i,
       ],
       extract: (match) => ({ prompt: (match[1] || match[2]).trim() }),
