@@ -17,6 +17,7 @@ import { reportState, reportCommand } from '../utils/status-reporter.js';
 import { conversationEngine } from '../core/conversation-engine.js';
 import { ScreenWatcher } from '../modules/screen-watcher.js';
 import { captureScreenText } from '../modules/screen-awareness.js';
+import { llmQuick } from '../utils/llm.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -210,6 +211,13 @@ export class VoiceAssistant {
   private ignoreStartTime = 0;
   private interrupted = false;
   private screenWatcher = new ScreenWatcher();
+  // Conversational awareness: only act when the user is actually addressing
+  // JARVIS (a command/question), not when talking ABOUT it or to someone else.
+  // Lets it sit in an always-listening room without butting into conversations.
+  private conversationalAwareness = true;
+
+  setAwareness(on: boolean): void { this.conversationalAwareness = on; }
+  getAwareness(): boolean { return this.conversationalAwareness; }
 
   /**
    * External command handler — when set, commands are sent here instead of
@@ -436,7 +444,7 @@ export class VoiceAssistant {
             if (command) {
               this.processCommand(command);
             } else {
-              this.respondBrief('Hello sir, how can I help?');
+              this.quietReset(); // bare wake word — stay quiet, keep listening (no greeting spam)
             }
           }
         }, 10000);
@@ -472,7 +480,7 @@ export class VoiceAssistant {
         this.processCommand(command);
       } else {
         // User just said "Jarvis" with nothing after
-        this.respondBrief('Hello sir, how can I help?');
+        this.quietReset(); // bare wake word — stay quiet, keep listening (no greeting spam)
       }
     }, 1200);
   }
@@ -487,7 +495,7 @@ export class VoiceAssistant {
         if (command) {
           this.processCommand(command);
         } else {
-          this.respondBrief('Hello sir, how can I help?');
+          this.quietReset(); // bare wake word — stay quiet, keep listening (no greeting spam)
         }
       }
       return;
@@ -508,7 +516,7 @@ export class VoiceAssistant {
       if (command) {
         this.processCommand(command);
       } else {
-        this.respondBrief('Hello sir, how can I help?');
+        this.quietReset(); // bare wake word — stay quiet, keep listening (no greeting spam)
       }
     }
   }
@@ -546,6 +554,38 @@ export class VoiceAssistant {
       .filter(Boolean);
   }
 
+  /** Quietly return to listening without speaking (used when not addressed). */
+  private quietReset(): void {
+    if (this.activationTimeout) { clearTimeout(this.activationTimeout); this.activationTimeout = null; }
+    if (this.commandTimeout) { clearTimeout(this.commandTimeout); this.commandTimeout = null; }
+    this.activatedText = '';
+    this.ignoreResults = false;
+    this.state = 'idle';
+    reportState('idle');
+  }
+
+  /**
+   * Conversational awareness — decide if the user is actually addressing JARVIS
+   * (a command/question to act on now) versus talking about it or to someone
+   * else. Uses the fast model so the gate adds minimal latency.
+   */
+  private async isAddressed(text: string): Promise<boolean> {
+    const clean = text.replace(/\bjarvis\b/gi, '').replace(/[^\w\s]/g, '').trim();
+    if (clean.length < 2) return false; // bare wake word — stay quiet, keep listening
+    try {
+      const verdict = await llmQuick(
+        `An always-listening assistant named JARVIS heard this in the room: "${text}"\n\n` +
+          `Is the user DIRECTLY giving JARVIS a command or asking it a question to act on right now? ` +
+          `Answer NO if they are talking to another person, explaining or describing JARVIS, ` +
+          `thinking aloud, or it's just a sentence fragment. Reply with ONLY one word: YES or NO.`,
+        'You are a strict intent gate for a voice assistant. Output only the single word YES or NO.',
+      );
+      return /\byes\b/i.test(verdict);
+    } catch {
+      return true; // fail open — don't drop a real command on a transient error
+    }
+  }
+
   private async processCommand(input: string): Promise<void> {
     this.state = 'processing';
     this.interrupted = false;
@@ -554,6 +594,17 @@ export class VoiceAssistant {
     if (this.activationTimeout) { clearTimeout(this.activationTimeout); this.activationTimeout = null; }
     if (this.commandTimeout) { clearTimeout(this.commandTimeout); this.commandTimeout = null; }
     reportState('processing');
+
+    // Conversational-awareness gate (local mode): ignore speech that isn't
+    // actually directed at JARVIS, so it doesn't interject while you talk
+    // about it or to someone else.
+    if (this.conversationalAwareness && !this.externalCommandHandler) {
+      if (!(await this.isAddressed(input))) {
+        console.log(fmt.dim(`  [voice] (heard "${input.slice(0, 48)}" — not for me, staying quiet)`));
+        this.quietReset();
+        return;
+      }
+    }
 
     // If external handler is set (Mac client → VPS mode), send the command
     // externally and go back to listening. VPS handles processing + audio.
