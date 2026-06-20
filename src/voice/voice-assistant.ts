@@ -212,9 +212,10 @@ export class VoiceAssistant {
   private interrupted = false;
   private screenWatcher = new ScreenWatcher();
   // Conversational awareness: only act when the user is actually addressing
-  // JARVIS (a command/question), not when talking ABOUT it or to someone else.
-  // Lets it sit in an always-listening room without butting into conversations.
-  private conversationalAwareness = true;
+  // JARVIS (a command/question), not when talking ABOUT it. OFF by default —
+  // it can mis-reject commands when the on-device STT mangles words, so it's
+  // opt-in via "voice aware on" for always-listening-room scenarios.
+  private conversationalAwareness = false;
 
   setAwareness(on: boolean): void { this.conversationalAwareness = on; }
   getAwareness(): boolean { return this.conversationalAwareness; }
@@ -570,7 +571,9 @@ export class VoiceAssistant {
    * else. Uses the fast model so the gate adds minimal latency.
    */
   private async isAddressed(text: string): Promise<boolean> {
-    const clean = text.replace(/\bjarvis\b/gi, '').replace(/[^\w\s]/g, '').trim();
+    // Strip "jarvis" even when the STT fuses it to the next word
+    // ("jarvisbrowse" -> "browse"), then normalise.
+    const clean = text.replace(/jarvis/gi, ' ').replace(/[^\w\s.]/g, ' ').replace(/\s+/g, ' ').trim();
     if (clean.length < 2) return false; // bare wake word — stay quiet, keep listening
 
     // FAST PATH: a recognized ACTION command is unambiguously addressed — skip
@@ -585,7 +588,13 @@ export class VoiceAssistant {
         if (parsed.confidence >= 1.0) return true; // exact command pattern
         if (parsed.confidence >= 0.6 && words <= 3) return true; // short keyword command
       }
-    } catch { /* fall through to the classifier */ }
+      // Fail OPEN on anything short and command-shaped: better to answer than to
+      // silently swallow a command the STT mangled. Only long, clearly-statement
+      // text falls through to the classifier.
+      if (words <= 4) return true;
+    } catch {
+      return true; // parse error — respond rather than drop a possible command
+    }
 
     // Ambiguous / conversational — let the fast model decide.
     try {
