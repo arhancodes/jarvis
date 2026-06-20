@@ -13,7 +13,7 @@ import { setLast } from '../core/context.js';
 import { recordCommand } from '../core/history.js';
 import type { CommandResult } from '../core/types.js';
 import { getLastStreamedText } from '../modules/ai-chat.js';
-import { reportState, reportCommand } from '../utils/status-reporter.js';
+import { reportState, reportCommand, reportSpeaking } from '../utils/status-reporter.js';
 import { conversationEngine } from '../core/conversation-engine.js';
 import { ScreenWatcher } from '../modules/screen-watcher.js';
 import { captureScreenText } from '../modules/screen-awareness.js';
@@ -808,7 +808,7 @@ export class VoiceAssistant {
     while ((!streamDone || sentenceQueue.length > 0) && !this.interrupted) {
       if (sentenceQueue.length > 0) {
         const sentence = this.sanitizeForSpeech(sentenceQueue.shift()!);
-        if (sentence) await speak(sentence);
+        if (sentence) { reportSpeaking(sentence); await speak(sentence); }
         if (this.interrupted) break;
       } else {
         await new Promise(r => setTimeout(r, 20));
@@ -878,10 +878,11 @@ export class VoiceAssistant {
 
   private async speakResponse(text: string): Promise<void> {
     if (this.interrupted) return;
-    reportState('speaking');
+    const clean = this.sanitizeForSpeech(text);
+    reportSpeaking(clean); // publish the caption for the fullscreen orb
     this.ignoreStartTime = Date.now();
 
     // Strip "jarvis" from speech to avoid wake word self-triggering
-    await speak(this.sanitizeForSpeech(text));
+    await speak(clean);
   }
 }

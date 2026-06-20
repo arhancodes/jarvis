@@ -21,6 +21,7 @@ struct JarvisStatus: Decodable {
     let whatsappConnected: Bool?
     let model: String?
     let bootTime: Double?
+    let spokenText: String?  // what JARVIS is currently saying (for the orb caption)
 }
 
 // MARK: - Arc Reactor View (small widget)
@@ -346,6 +347,8 @@ class ArcReactorView: NSView {
 class EnergyOrbView: NSView {
     var currentState = "offline"
     var voiceActive = false
+    var spokenText = ""   // what JARVIS is currently saying (shown while speaking)
+    var lastCommand = ""  // the command being processed (shown while thinking)
     var time: CGFloat = 0
 
     // Speaking pulse (gentle glow)
@@ -626,25 +629,33 @@ class EnergyOrbView: NSView {
         ctx.addLine(to: CGPoint(x: W - margin, y: margin + cornerLen))
         ctx.strokePath()
 
-        // ── State label at bottom ──
-        let label: String
+        // ── Caption: show what JARVIS is saying / doing (no static label) ──
+        let caption: String
         switch currentState {
-        case "idle":       label = voiceActive ? "LISTENING" : "ONLINE"
-        case "activated":  label = "ACTIVATED"
-        case "processing": label = "PROCESSING"
-        case "speaking":   label = "SPEAKING"
-        case "offline":    label = "OFFLINE"
-        default:           label = "STANDBY"
+        case "speaking":   caption = spokenText
+        case "processing": caption = lastCommand.isEmpty ? "Thinking\u{2026}" : "\u{203A} \(lastCommand)"
+        case "activated":  caption = "Listening\u{2026}"
+        default:           caption = ""
         }
-
-        let labelFont = NSFont.monospacedSystemFont(ofSize: 14, weight: .medium)
-        let labelAttrs: [NSAttributedString.Key: Any] = [
-            .font: labelFont,
-            .foregroundColor: NSColor(red: 1.0, green: 0.72, blue: 0.22, alpha: brightness * 0.7),
-        ]
-        let labelStr = NSAttributedString(string: "J.A.R.V.I.S.  //  \(label)", attributes: labelAttrs)
-        let labelSize = labelStr.size()
-        labelStr.draw(at: CGPoint(x: center.x - labelSize.width / 2, y: margin + 10))
+        if !caption.isEmpty {
+            let para = NSMutableParagraphStyle()
+            para.alignment = .center
+            para.lineBreakMode = .byWordWrapping
+            para.lineSpacing = 4
+            let capAttrs: [NSAttributedString.Key: Any] = [
+                .font: NSFont.systemFont(ofSize: 24, weight: .regular),
+                .foregroundColor: NSColor(red: 1.0, green: 0.86, blue: 0.6, alpha: 0.94),
+                .paragraphStyle: para,
+            ]
+            let maxW = min(W * 0.66, 880)
+            let capStr = NSAttributedString(string: caption, attributes: capAttrs)
+            let bounding = capStr.boundingRect(
+                with: CGSize(width: maxW, height: 600),
+                options: [.usesLineFragmentOrigin, .usesFontLeading]
+            )
+            let capRect = CGRect(x: center.x - maxW / 2, y: margin + 24, width: maxW, height: ceil(bounding.height))
+            capStr.draw(with: capRect, options: [.usesLineFragmentOrigin, .usesFontLeading])
+        }
 
         ctx.restoreGState()
     }
@@ -904,6 +915,8 @@ class JarvisOverlayApp: NSObject, NSApplicationDelegate, ReactorClickDelegate, F
         reactorView.currentState = state
         orbView?.voiceActive = status.voiceActive
         orbView?.currentState = state
+        orbView?.spokenText = status.spokenText ?? ""
+        orbView?.lastCommand = status.lastCommand ?? ""
 
         let stateDesc: String
         switch status.state {

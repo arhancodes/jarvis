@@ -24,6 +24,7 @@ interface JarvisStatusData {
   whatsappConnected: boolean;
   model: string;            // active LLM model
   bootTime: number;         // epoch ms, for uptime
+  spokenText: string;       // what JARVIS is currently saying (for the orb caption)
 }
 
 const currentStatus: JarvisStatusData = {
@@ -39,6 +40,7 @@ const currentStatus: JarvisStatusData = {
   whatsappConnected: false,
   model: '',
   bootTime: 0,
+  spokenText: '',
 };
 
 let statusCallback: ((status: JarvisStatusData) => void) | null = null;
@@ -90,6 +92,15 @@ export function reportVoice(active: boolean): void {
 
 export function reportState(state: string): void {
   currentStatus.state = state;
+  // Clear the spoken caption once JARVIS stops speaking.
+  if (state !== 'speaking') currentStatus.spokenText = '';
+  flush();
+}
+
+/** What JARVIS is currently saying — shown as the orb caption while speaking. */
+export function reportSpeaking(text: string): void {
+  currentStatus.spokenText = text.trim();
+  currentStatus.state = 'speaking';
   flush();
 }
 
