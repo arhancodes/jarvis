@@ -374,16 +374,21 @@ export class VoiceAssistant {
     // self-triggering from JARVIS saying its own name is already blocked.
     if (this.ignoreResults) {
       const elapsed = Date.now() - this.ignoreStartTime;
-      if (elapsed > 1200 && msg.type === 'partial' && msg.text && /\bjarvis\b/i.test(msg.text)) {
-        // User said "Jarvis" while JARVIS was speaking — interrupt!
+      const text = msg.text || '';
+      // Interrupt on "jarvis" (echo-safe — stripped from TTS) OR a natural stop
+      // word. Check BOTH partial and final results so a spoken interrupt isn't
+      // missed while a long reply plays. /jarvis/ has no word boundary so a
+      // fused transcription ("jarvisstop") still triggers.
+      const interruptRe = /jarvis|\b(?:stop|shut\s*up|be\s+quiet|quiet|enough|cancel|never\s*mind|wait)\b/i;
+      if (elapsed > 1000 && (msg.type === 'partial' || msg.type === 'final') && interruptRe.test(text)) {
         abortSpeech(); // Kill speech AND prevent modules from re-speaking
-        conversationEngine.abort(); // Cancel the Ollama stream immediately
+        conversationEngine.abort(); // Cancel the stream immediately
         this.ignoreResults = false;
         this.interrupted = true;
         this.state = 'idle';
         console.log(fmt.dim('  [voice] Interrupted.'));
-        // Let handlePartial pick up the wake word for next command
-        this.handlePartial(msg.text);
+        // If they actually said "jarvis ...", let it pick up as the next command.
+        if (/jarvis/i.test(text)) this.handlePartial(text);
       }
       return;
     }

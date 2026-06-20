@@ -90,20 +90,23 @@ export class ScreenAwarenessModule implements JarvisModule {
 
   patterns: PatternDefinition[] = [
     {
+      // RAW OCR dump (only when explicitly asked for the text) — not for questions.
       intent: 'read-screen',
       patterns: [
-        /^(?:read|what(?:'?s| is)\s+on)\s+(?:my\s+|the\s+)?screen$/i,
-        /^(?:what am i|what(?:'s| is))\s+(?:looking at|reading|viewing)$/i,
+        /^read\s+(?:my\s+|the\s+)?screen$/i,
         /^screen\s+(?:text|content|read)$/i,
         /^ocr$/i,
       ],
       extract: () => ({}),
     },
     {
+      // Questions about the screen -> concise Claude-vision summary (NOT a raw dump).
       intent: 'summarize-screen',
       patterns: [
         /^summarize\s+(?:my\s+|the\s+)?screen$/i,
-        /^(?:what(?:'s| is)\s+)?(?:happening|going on)\s+(?:on\s+)?(?:my\s+)?screen$/i,
+        /^what(?:'?s| is)\s+on\s+(?:my\s+|the\s+)?screen$/i,
+        /^what\s+am\s+i\s+(?:looking\s+at|viewing|reading)$/i,
+        /^(?:what(?:'?s| is)\s+)?(?:happening|going on)\s+(?:on\s+)?(?:my\s+)?screen$/i,
         /^screen\s+summary$/i,
       ],
       extract: () => ({}),
@@ -173,7 +176,13 @@ export class ScreenAwarenessModule implements JarvisModule {
       }
 
       const truncated = text.length > 2000 ? text.slice(0, 2000) + '\n...(truncated)' : text;
-      return { success: true, message: `Screen text:\n${truncated}` };
+      // Show the full text on screen, but DON'T read the whole dump aloud —
+      // speak a short line instead (use "summarize my screen" for a spoken summary).
+      return {
+        success: true,
+        message: `Screen text:\n${truncated}`,
+        voiceMessage: 'The screen text is on your terminal, sir. Say "summarize my screen" for a quick rundown.',
+      };
     } catch (err) {
       return { success: false, message: `Screen read error: ${(err as Error).message}` };
     }
