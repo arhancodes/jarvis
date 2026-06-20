@@ -47,6 +47,7 @@ export interface InboundMessage {
 export interface StartOpts {
   authDir: string;
   onQR: (qr: string) => void;
+  onState?: (connected: boolean) => void;
 }
 
 const MAX_BUFFERED = 500;
@@ -59,6 +60,7 @@ let connecting = false; // in-flight guard — only one connect() at a time
 let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
 let currentAuthDir = '';
 let onQRCb: ((qr: string) => void) | null = null;
+let onStateCb: ((connected: boolean) => void) | null = null;
 let qrPrintCount = 0; // bound how many times we print the QR before giving up
 const MAX_QR_PRINTS = 5;
 const buffer: InboundMessage[] = [];
@@ -113,6 +115,7 @@ export async function startWhatsApp(opts: StartOpts): Promise<void> {
   suppressSignalNoise();
   currentAuthDir = opts.authDir;
   onQRCb = opts.onQR;
+  onStateCb = opts.onState ?? null;
   mkdirSync(opts.authDir, { recursive: true });
   await connect();
 }
@@ -202,9 +205,11 @@ async function connect(): Promise<void> {
         qrPrintCount = 0; // linked — reset so a future re-pair prints again
         const me = socket.user?.id;
         connectionState = { state: 'open', user: me };
+        onStateCb?.(true);
         log.info(`WhatsApp connected as ${me ?? '(unknown)'}`);
       } else if (connection === 'close') {
         connecting = false;
+        onStateCb?.(false);
         const code = (lastDisconnect?.error as { output?: { statusCode?: number } })?.output
           ?.statusCode;
         const reason = lastDisconnect?.error ? (lastDisconnect.error as Error).message : 'unknown';

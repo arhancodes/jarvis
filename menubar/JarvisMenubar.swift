@@ -15,6 +15,12 @@ struct JarvisStatus: Decodable {
     let lastCommandTime: Double?
     let modulesLoaded: Int?
     let pid: Int?
+    // Richer status (optional so older status files still decode)
+    let recentCommands: [String]?
+    let sidecarReady: Bool?
+    let whatsappConnected: Bool?
+    let model: String?
+    let bootTime: Double?
 }
 
 // MARK: - Arc Reactor View (small widget)
@@ -735,20 +741,38 @@ class JarvisOverlayApp: NSObject, NSApplicationDelegate, ReactorClickDelegate, F
         menu.addItem(titleItem)
         menu.addItem(.separator())
 
-        let statusItem = NSMenuItem(title: "Status: Checking...", action: nil, keyEquivalent: "")
-        statusItem.isEnabled = false
-        statusItem.tag = 100
-        menu.addItem(statusItem)
+        // Helper to add a disabled, tagged info row.
+        func infoRow(_ title: String, _ tag: Int) {
+            let item = NSMenuItem(title: title, action: nil, keyEquivalent: "")
+            item.isEnabled = false
+            item.tag = tag
+            menu.addItem(item)
+        }
 
-        let voiceItem = NSMenuItem(title: "Voice: \u{2014}", action: nil, keyEquivalent: "")
-        voiceItem.isEnabled = false
-        voiceItem.tag = 101
-        menu.addItem(voiceItem)
+        infoRow("Status: Checking...", 100)
+        infoRow("Voice: \u{2014}", 101)
 
-        let cmdItem = NSMenuItem(title: "Last: \u{2014}", action: nil, keyEquivalent: "")
-        cmdItem.isEnabled = false
-        cmdItem.tag = 102
-        menu.addItem(cmdItem)
+        menu.addItem(.separator())
+
+        // Connection indicators
+        infoRow("Sidecar: \u{2014}", 103)
+        infoRow("WhatsApp: \u{2014}", 104)
+        infoRow("Model: \u{2014}", 105)
+        infoRow("Modules: \u{2014}", 106)
+
+        menu.addItem(.separator())
+
+        // Recent activity
+        let recentHeader = NSMenuItem(title: "Recent", action: nil, keyEquivalent: "")
+        recentHeader.isEnabled = false
+        recentHeader.attributedTitle = NSAttributedString(
+            string: "RECENT",
+            attributes: [.font: NSFont.systemFont(ofSize: 10, weight: .semibold), .foregroundColor: NSColor.secondaryLabelColor]
+        )
+        menu.addItem(recentHeader)
+        infoRow("  \u{2014}", 110)
+        infoRow("  ", 111)
+        infoRow("  ", 112)
 
         menu.addItem(.separator())
 
@@ -860,7 +884,7 @@ class JarvisOverlayApp: NSObject, NSApplicationDelegate, ReactorClickDelegate, F
             reactorView.voiceActive = false
             orbView?.currentState = "offline"
             orbView?.voiceActive = false
-            updateMenu(state: "Offline", voice: "\u{2014}", lastCmd: "\u{2014}")
+            updateMenu(state: "Offline", voice: "\u{2014}")
             return
         }
 
@@ -870,7 +894,7 @@ class JarvisOverlayApp: NSObject, NSApplicationDelegate, ReactorClickDelegate, F
                 reactorView.voiceActive = false
                 orbView?.currentState = "offline"
                 orbView?.voiceActive = false
-                updateMenu(state: "Offline (stale)", voice: "\u{2014}", lastCmd: "\u{2014}")
+                updateMenu(state: "Offline (stale)", voice: "\u{2014}")
                 return
             }
         }
@@ -891,21 +915,32 @@ class JarvisOverlayApp: NSObject, NSApplicationDelegate, ReactorClickDelegate, F
         }
 
         let voiceDesc = status.voiceActive ? "Active" : "Inactive"
-        let cmdDesc: String
-        if let cmd = status.lastCommand, !cmd.isEmpty {
-            cmdDesc = cmd.count > 25 ? String(cmd.prefix(25)) + "..." : cmd
-        } else {
-            cmdDesc = "\u{2014}"
+        let sidecarDesc = (status.sidecarReady ?? false) ? "\u{25CF} ready" : "\u{25CB} off"
+        let waDesc = (status.whatsappConnected ?? false) ? "\u{25CF} linked" : "\u{25CB} offline"
+        let modelDesc = (status.model.flatMap { $0.isEmpty ? nil : $0 }) ?? "\u{2014}"
+        var modulesDesc = "\(status.modulesLoaded ?? 0) modules"
+        if let bt = status.bootTime, bt > 0 {
+            let mins = Int((Date().timeIntervalSince1970 * 1000 - bt) / 60000)
+            modulesDesc += mins >= 60 ? " \u{00B7} up \(mins / 60)h \(mins % 60)m" : " \u{00B7} up \(max(0, mins))m"
         }
+        let recent = (status.recentCommands ?? []).map { $0.count > 30 ? String($0.prefix(30)) + "\u{2026}" : $0 }
 
-        updateMenu(state: stateDesc, voice: voiceDesc, lastCmd: cmdDesc)
+        updateMenu(state: stateDesc, voice: voiceDesc, sidecar: sidecarDesc, whatsapp: waDesc, model: modelDesc, modules: modulesDesc, recent: recent)
     }
 
-    func updateMenu(state: String, voice: String, lastCmd: String) {
+    func updateMenu(state: String, voice: String, sidecar: String = "\u{2014}", whatsapp: String = "\u{2014}",
+                    model: String = "\u{2014}", modules: String = "\u{2014}", recent: [String] = []) {
         guard let menu = reactorView.menu else { return }
         menu.item(withTag: 100)?.title = "Status: \(state)"
         menu.item(withTag: 101)?.title = "Voice: \(voice)"
-        menu.item(withTag: 102)?.title = "Last: \"\(lastCmd)\""
+        menu.item(withTag: 103)?.title = "Sidecar: \(sidecar)"
+        menu.item(withTag: 104)?.title = "WhatsApp: \(whatsapp)"
+        menu.item(withTag: 105)?.title = "Model: \(model)"
+        menu.item(withTag: 106)?.title = modules
+        let tags = [110, 111, 112]
+        for (i, tag) in tags.enumerated() {
+            menu.item(withTag: tag)?.title = i < recent.count ? "  \(recent[i])" : "  \u{2014}"
+        }
     }
 
     @objc func quitApp() {

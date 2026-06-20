@@ -35,7 +35,8 @@ import { DossierModule } from './modules/dossier.js';
 import { closeAll as closeAllBrowsers } from './utils/browser-manager.js';
 import { voiceInput } from './voice/voice-input.js';
 import { VoiceAssistant } from './voice/voice-assistant.js';
-import { reportBoot, reportCommand, reportShutdown, reportVoice } from './utils/status-reporter.js';
+import { reportBoot, reportCommand, reportShutdown, reportVoice, reportSidecar, reportWhatsApp, reportModel } from './utils/status-reporter.js';
+import { getLLMConfig } from './utils/llm.js';
 import { speak, isVoiceEnabled, stopSpeaking } from './utils/voice-output.js';
 import { conversationEngine } from './core/conversation-engine.js';
 import { loadMemory, flushMemory } from './core/memory.js';
@@ -404,8 +405,13 @@ export function boot(): void {
   // Initialize intelligence layer (trace-driven learning, memory index, routing)
   initIntelligence();
 
+  // Report the active model to the menubar
+  try { reportModel(getLLMConfig().claudeModel || ''); } catch { /* non-critical */ }
+
   // Start Rust sidecar for fast vector search (non-blocking, falls back to TS)
-  startSidecar().catch((err) => log.warn('Sidecar startup failed', err));
+  startSidecar()
+    .then((ready) => reportSidecar(!!ready))
+    .catch((err) => { log.warn('Sidecar startup failed', err); reportSidecar(false); });
 
   // Open the persistent WhatsApp connection (Baileys). First run prints a QR to
   // scan; auth persists to ~/.jarvis/whatsapp-auth so later boots reconnect silently.
@@ -415,6 +421,7 @@ export function boot(): void {
       console.log(fmt.dim('\n  [whatsapp] Scan this QR with WhatsApp → Linked Devices:\n'));
       qrcodeTerminal.generate(qr, { small: true });
     },
+    onState: (connected) => reportWhatsApp(connected),
   }).catch((err) => log.warn('WhatsApp startup failed', err));
 
   // Restore persisted scheduled tasks

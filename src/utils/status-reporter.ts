@@ -18,6 +18,12 @@ interface JarvisStatusData {
   lastCommandTime: number;
   modulesLoaded: number;
   pid: number;
+  // ── Richer status (for the menubar) ──
+  recentCommands: string[]; // last few commands, most recent first
+  sidecarReady: boolean;    // Rust sidecar up
+  whatsappConnected: boolean;
+  model: string;            // active LLM model
+  bootTime: number;         // epoch ms, for uptime
 }
 
 const currentStatus: JarvisStatusData = {
@@ -28,6 +34,11 @@ const currentStatus: JarvisStatusData = {
   lastCommandTime: 0,
   modulesLoaded: 0,
   pid: process.pid,
+  recentCommands: [],
+  sidecarReady: false,
+  whatsappConnected: false,
+  model: '',
+  bootTime: 0,
 };
 
 let statusCallback: ((status: JarvisStatusData) => void) | null = null;
@@ -67,6 +78,7 @@ export function reportBoot(moduleCount: number): void {
   currentStatus.running = true;
   currentStatus.modulesLoaded = moduleCount;
   currentStatus.pid = process.pid;
+  currentStatus.bootTime = Date.now();
   flush();
 }
 
@@ -84,6 +96,30 @@ export function reportState(state: string): void {
 export function reportCommand(command: string): void {
   currentStatus.lastCommand = command;
   currentStatus.lastCommandTime = Date.now();
+  // Keep a short rolling history (most recent first, de-duped against the last one).
+  const trimmed = command.trim();
+  if (trimmed && currentStatus.recentCommands[0] !== trimmed) {
+    currentStatus.recentCommands.unshift(trimmed);
+    currentStatus.recentCommands = currentStatus.recentCommands.slice(0, 5);
+  }
+  flush();
+}
+
+/** Rust sidecar up/down. */
+export function reportSidecar(ready: boolean): void {
+  currentStatus.sidecarReady = ready;
+  flush();
+}
+
+/** WhatsApp connection state. */
+export function reportWhatsApp(connected: boolean): void {
+  currentStatus.whatsappConnected = connected;
+  flush();
+}
+
+/** Active LLM model label. */
+export function reportModel(model: string): void {
+  currentStatus.model = model;
   flush();
 }
 
