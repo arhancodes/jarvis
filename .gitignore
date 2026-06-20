@@ -37,3 +37,4 @@ plan.md
 
 # Rust build artifacts
 rust-sidecar/target/
+config/whatsapp-contacts.json

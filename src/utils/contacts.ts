@@ -87,9 +87,14 @@ export async function resolveContactNumber(nameOrNumber: string): Promise<string
  * corrupted by escaping. Returns E.164 digits or null.
  */
 async function lookupMacContacts(name: string): Promise<string | null> {
+  // `launch` first so the query doesn't fail with -600 ("Application isn't
+  // running") when Contacts happens to be closed — the flaky part of this path.
   const script = `
 on run argv
   set theName to item 1 of argv
+  try
+    launch application "Contacts"
+  end try
   tell application "Contacts"
     set matches to (every person whose name contains theName)
     if (count of matches) is 0 then return ""
@@ -106,7 +111,7 @@ end run`;
     const digits = digitsOnly(raw);
     return digits.length >= 7 ? digits : null;
   } catch (err) {
-    log.debug('macOS Contacts lookup failed', err);
+    log.warn(`macOS Contacts lookup failed for "${name}" — add the number to config/whatsapp-contacts.json instead`, err);
     return null;
   }
 }
