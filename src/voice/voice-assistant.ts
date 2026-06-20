@@ -8,7 +8,7 @@ import { speak, isSpeaking, stopSpeaking, abortSpeech, resetSpeechAbort } from '
 import { fmt } from '../utils/formatter.js';
 import { parse } from '../core/parser.js';
 import { execute } from '../core/executor.js';
-import { tryNaturalLanguageMapping, getSuggestions, isLikelyCommandAttempt } from '../modules/smart-assist.js';
+import { tryNaturalLanguageMapping } from '../modules/smart-assist.js';
 import { setLast } from '../core/context.js';
 import { recordCommand } from '../core/history.js';
 import type { CommandResult } from '../core/types.js';
@@ -539,8 +539,9 @@ export class VoiceAssistant {
   // ── Command Extraction & Execution ──
 
   private extractCommand(text: string): string | null {
-    // Strip everything up to and including "jarvis"
-    const cleaned = text.replace(/^.*?\bjarvis\b[,.]?\s*/i, '').trim();
+    // Strip everything up to and including "jarvis" — including when the STT
+    // fuses it to the next word ("jarvisbrowse youtube" -> "browse youtube").
+    const cleaned = text.replace(/^.*?jarvis[\s,.:]*/i, '').trim();
     return cleaned || null;
   }
 
@@ -673,19 +674,13 @@ export class VoiceAssistant {
         let parsed = await parse(cmd);
         if (!parsed) parsed = tryNaturalLanguageMapping(cmd);
 
-        // If no module matched, check if this looks like a command or conversation
+        // No exact module match — hand it to the conversation engine (Claude).
+        // Claude understands messy / mistranscribed phrasing ("browse youtube"
+        // -> browse youtube.com, "send mom a message" -> WhatsApp) and either
+        // runs the right action via an [ACTION:] tag or just answers. This is
+        // far more reliable than canned "I didn't catch that" suggestions.
         if (!parsed) {
-          if (isLikelyCommandAttempt(cmd)) {
-            // Failed command attempt — give suggestions instead of confusing llama
-            const suggestions = getSuggestions(cmd);
-            const hint = suggestions.length > 0
-              ? `I didn't catch that. Try: ${suggestions[0]}`
-              : `I didn't understand that command.`;
-            console.log(fmt.warn(hint));
-            this.ignoreStartTime = Date.now();
-            await this.speakResponse(hint);
-            continue;
-          }
+          this.ignoreStartTime = Date.now();
           await this.voiceConverse(cmd);
           continue;
         }
