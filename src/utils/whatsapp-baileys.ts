@@ -64,6 +64,45 @@ const MAX_QR_PRINTS = 5;
 const buffer: InboundMessage[] = [];
 const seenIds = new Set<string>(); // dedup inbound across any socket churn
 
+// Baileys' encryption layer (libsignal) writes session-rotation chatter straight
+// to console.log/console.error — harmless housekeeping, but it floods the REPL.
+// Filter just those lines; everything else passes through untouched.
+let signalNoiseFiltered = false;
+function suppressSignalNoise(): void {
+  if (signalNoiseFiltered) return;
+  signalNoiseFiltered = true;
+  const NOISE = [
+    'Closing open session',
+    'Closing session',
+    'Closing stale',
+    'SessionEntry',
+    'Removing old closed session',
+    'Failed to decrypt',
+    'incoming prekey bundle',
+    'No matching sessions',
+    'No session found',
+  ];
+  const isNoise = (args: unknown[]): boolean => {
+    const first = args[0];
+    if (typeof first === 'string' && NOISE.some((n) => first.includes(n))) return true;
+    // libsignal also dumps a raw SessionEntry object — detect it by shape.
+    if (first && typeof first === 'object') {
+      const o = first as Record<string, unknown>;
+      if ('_chains' in o && 'currentRatchet' in o) return true;
+      const ctor = (first as { constructor?: { name?: string } }).constructor?.name;
+      if (ctor === 'SessionEntry' || ctor === 'SessionRecord') return true;
+    }
+    return false;
+  };
+  const wrap = (orig: (...a: unknown[]) => void) => (...args: unknown[]) => {
+    if (isNoise(args)) return;
+    orig(...args);
+  };
+  console.log = wrap(console.log.bind(console)) as typeof console.log;
+  console.error = wrap(console.error.bind(console)) as typeof console.error;
+  console.info = wrap(console.info.bind(console)) as typeof console.info;
+}
+
 /**
  * Open the persistent WhatsApp connection. Safe to call once at boot.
  * Prints a QR (via onQR) on first run; reconnects automatically thereafter.
@@ -71,6 +110,7 @@ const seenIds = new Set<string>(); // dedup inbound across any socket churn
 export async function startWhatsApp(opts: StartOpts): Promise<void> {
   if (started) return;
   started = true;
+  suppressSignalNoise();
   currentAuthDir = opts.authDir;
   onQRCb = opts.onQR;
   mkdirSync(opts.authDir, { recursive: true });
