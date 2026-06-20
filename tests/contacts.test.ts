@@ -1,5 +1,5 @@
 import { describe, it, expect, afterAll } from 'vitest';
-import { existsSync, rmSync } from 'fs';
+import { existsSync, rmSync, readFileSync, writeFileSync } from 'fs';
 import { resolveContactNumber } from '../src/utils/contacts.js';
 import { configPath } from '../src/utils/config.js';
 import { writeJsonConfig } from '../src/utils/config.js';
@@ -10,11 +10,17 @@ import { writeJsonConfig } from '../src/utils/config.js';
 // (the osascript fallback is only reached for names NOT in the map.)
 
 const cfgFile = 'whatsapp-contacts.json';
-const cfgExisted = existsSync(configPath(cfgFile));
+const cfgPath = configPath(cfgFile);
+// Back up the user's REAL contacts file so the test can never clobber it.
+const original: string | null = existsSync(cfgPath) ? readFileSync(cfgPath, 'utf-8') : null;
 
 describe('resolveContactNumber', () => {
   afterAll(() => {
-    if (!cfgExisted && existsSync(configPath(cfgFile))) rmSync(configPath(cfgFile));
+    if (original !== null) {
+      writeFileSync(cfgPath, original); // restore the real file exactly
+    } else if (existsSync(cfgPath)) {
+      rmSync(cfgPath);
+    }
   });
 
   it('returns digits for an input that is already a phone number', async () => {
