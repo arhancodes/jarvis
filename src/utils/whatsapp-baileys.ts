@@ -58,6 +58,7 @@ let connectionState: ConnectionState = { state: 'idle' };
 let started = false;
 let connecting = false; // in-flight guard — only one connect() at a time
 let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
+let reconnectAttempts = 0; // for exponential backoff + quiet logging
 let currentAuthDir = '';
 let onQRCb: ((qr: string) => void) | null = null;
 let onStateCb: ((connected: boolean) => void) | null = null;
@@ -141,10 +142,19 @@ function teardownSocket(): void {
 
 function scheduleReconnect(): void {
   if (reconnectTimer) return; // already scheduled
+  reconnectAttempts++;
+  // Exponential backoff: 3s, 6s, 12s, 24s, 48s, capped at 60s — and log only the
+  // first attempt so a flaky network can't flood the console.
+  const delay = Math.min(3000 * 2 ** (reconnectAttempts - 1), 60000);
+  if (reconnectAttempts === 1) {
+    log.warn('WhatsApp connection dropped — reconnecting in the background');
+  } else {
+    log.debug(`WhatsApp reconnect attempt ${reconnectAttempts} in ${delay / 1000}s`);
+  }
   reconnectTimer = setTimeout(() => {
     reconnectTimer = null;
-    connect().catch((e) => log.error('WhatsApp reconnect failed', e));
-  }, 3000);
+    connect().catch((e) => log.debug('WhatsApp reconnect failed', e));
+  }, delay);
 }
 
 async function connect(): Promise<void> {
@@ -203,6 +213,7 @@ async function connect(): Promise<void> {
       if (connection === 'open') {
         connecting = false;
         qrPrintCount = 0; // linked — reset so a future re-pair prints again
+        reconnectAttempts = 0; // healthy connection — reset backoff
         const me = socket.user?.id;
         connectionState = { state: 'open', user: me };
         onStateCb?.(true);
@@ -216,8 +227,7 @@ async function connect(): Promise<void> {
         connectionState = { state: 'closed', reason };
 
         if (code !== DisconnectReason.loggedOut) {
-          log.warn(`WhatsApp closed (code=${code ?? '?'}) — reconnecting in 3s`);
-          scheduleReconnect();
+          scheduleReconnect(); // logs once, then backs off quietly
         } else {
           log.warn('WhatsApp logged out — wiping auth; re-pair with "whatsapp login"');
           teardownSocket();
@@ -295,6 +305,7 @@ export async function repairWhatsApp(): Promise<void> {
     clearTimeout(reconnectTimer);
     reconnectTimer = null;
   }
+  reconnectAttempts = 0;
   teardownSocket();
   try {
     rmSync(currentAuthDir, { recursive: true, force: true });
