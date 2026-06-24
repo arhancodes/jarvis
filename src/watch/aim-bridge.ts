@@ -475,11 +475,13 @@ function connectToAIM(config: AIMBridgeConfig): void {
   });
 
   aimWs.on('error', (err) => {
-    const msg = err.message;
-    // Only log if it's a new error message (suppress repeated identical errors)
-    if (msg !== lastErrorMsg || consecutiveFailures <= 1) {
-      console.log(`  [aim] Error: ${msg}`);
-      lastErrorMsg = msg;
+    // Log at most one error line per disconnection streak. lastErrorMsg is
+    // reset to '' on a successful 'open', so the first error after a healthy
+    // connection prints once; subsequent retries (even with a different errno
+    // like ETIMEDOUT ↔ ECONNREFUSED) stay quiet until we reconnect.
+    if (lastErrorMsg === '') {
+      console.log(`  [aim] Error: ${err.message} — retrying quietly with backoff`);
+      lastErrorMsg = err.message;
     }
   });
 }
