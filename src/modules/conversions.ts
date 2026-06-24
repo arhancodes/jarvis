@@ -285,6 +285,91 @@ function convertTimezone(timeStr: string, fromTz: string, toTz: string): Command
   };
 }
 
+// ── City / country → IANA timezone (DST-accurate current time) ──
+const CITY_TO_IANA: Record<string, string> = {
+  'tokyo': 'Asia/Tokyo', 'japan': 'Asia/Tokyo', 'osaka': 'Asia/Tokyo',
+  'london': 'Europe/London', 'uk': 'Europe/London', 'england': 'Europe/London', 'britain': 'Europe/London',
+  'new york': 'America/New_York', 'nyc': 'America/New_York', 'new york city': 'America/New_York',
+  'washington': 'America/New_York', 'boston': 'America/New_York', 'miami': 'America/New_York', 'atlanta': 'America/New_York',
+  'chicago': 'America/Chicago', 'dallas': 'America/Chicago', 'houston': 'America/Chicago',
+  'denver': 'America/Denver',
+  'los angeles': 'America/Los_Angeles', 'la': 'America/Los_Angeles', 'san francisco': 'America/Los_Angeles',
+  'sf': 'America/Los_Angeles', 'california': 'America/Los_Angeles', 'seattle': 'America/Los_Angeles', 'vegas': 'America/Los_Angeles',
+  'dubai': 'Asia/Dubai', 'uae': 'Asia/Dubai', 'abu dhabi': 'Asia/Dubai', 'sharjah': 'Asia/Dubai',
+  'india': 'Asia/Kolkata', 'delhi': 'Asia/Kolkata', 'mumbai': 'Asia/Kolkata', 'bangalore': 'Asia/Kolkata',
+  'bengaluru': 'Asia/Kolkata', 'kolkata': 'Asia/Kolkata', 'hyderabad': 'Asia/Kolkata', 'chennai': 'Asia/Kolkata',
+  'paris': 'Europe/Paris', 'france': 'Europe/Paris',
+  'berlin': 'Europe/Berlin', 'germany': 'Europe/Berlin', 'munich': 'Europe/Berlin', 'frankfurt': 'Europe/Berlin',
+  'madrid': 'Europe/Madrid', 'spain': 'Europe/Madrid', 'barcelona': 'Europe/Madrid',
+  'rome': 'Europe/Rome', 'italy': 'Europe/Rome', 'milan': 'Europe/Rome',
+  'amsterdam': 'Europe/Amsterdam', 'netherlands': 'Europe/Amsterdam',
+  'moscow': 'Europe/Moscow', 'russia': 'Europe/Moscow',
+  'istanbul': 'Europe/Istanbul', 'turkey': 'Europe/Istanbul',
+  'dublin': 'Europe/Dublin', 'ireland': 'Europe/Dublin',
+  'sydney': 'Australia/Sydney', 'melbourne': 'Australia/Melbourne', 'australia': 'Australia/Sydney', 'brisbane': 'Australia/Brisbane', 'perth': 'Australia/Perth',
+  'singapore': 'Asia/Singapore',
+  'hong kong': 'Asia/Hong_Kong',
+  'beijing': 'Asia/Shanghai', 'shanghai': 'Asia/Shanghai', 'china': 'Asia/Shanghai',
+  'seoul': 'Asia/Seoul', 'korea': 'Asia/Seoul', 'south korea': 'Asia/Seoul',
+  'toronto': 'America/Toronto', 'canada': 'America/Toronto', 'vancouver': 'America/Vancouver',
+  'sao paulo': 'America/Sao_Paulo', 'brazil': 'America/Sao_Paulo', 'rio': 'America/Sao_Paulo',
+  'mexico city': 'America/Mexico_City', 'mexico': 'America/Mexico_City',
+  'auckland': 'Pacific/Auckland', 'new zealand': 'Pacific/Auckland',
+  'bangkok': 'Asia/Bangkok', 'thailand': 'Asia/Bangkok',
+  'karachi': 'Asia/Karachi', 'pakistan': 'Asia/Karachi', 'lahore': 'Asia/Karachi',
+  'jakarta': 'Asia/Jakarta', 'indonesia': 'Asia/Jakarta',
+  'manila': 'Asia/Manila', 'philippines': 'Asia/Manila',
+  'cairo': 'Africa/Cairo', 'egypt': 'Africa/Cairo',
+  'lagos': 'Africa/Lagos', 'nigeria': 'Africa/Lagos',
+  'johannesburg': 'Africa/Johannesburg', 'south africa': 'Africa/Johannesburg', 'cape town': 'Africa/Johannesburg',
+  'tel aviv': 'Asia/Jerusalem', 'israel': 'Asia/Jerusalem', 'jerusalem': 'Asia/Jerusalem',
+  'riyadh': 'Asia/Riyadh', 'saudi arabia': 'Asia/Riyadh', 'saudi': 'Asia/Riyadh',
+};
+
+/** Current wall-clock time in a named city/country/timezone, DST-accurate via Intl. */
+function currentTimeIn(place: string): CommandResult {
+  const lower = place
+    .toLowerCase()
+    .trim()
+    .replace(/\s+(?:time|timezone|right\s+now|now)$/i, '')
+    .replace(/^the\s+/i, '')
+    .replace(/\?+$/, '')
+    .trim();
+
+  const iana = CITY_TO_IANA[lower];
+  if (iana) {
+    const timeStr = new Intl.DateTimeFormat('en-US', {
+      timeZone: iana, hour: 'numeric', minute: '2-digit', hour12: true,
+    }).format(new Date());
+    const niceLabel = lower.replace(/\b\w/g, (c) => c.toUpperCase());
+    return {
+      success: true,
+      message: `Current time in ${niceLabel}: ${timeStr}`,
+      voiceMessage: `It's ${timeStr} in ${niceLabel}.`,
+    };
+  }
+
+  // Fall back to the fixed-offset table (no DST) for timezone abbreviations.
+  const tz = resolveTimezone(lower);
+  if (tz) {
+    const now = new Date();
+    const utcMs = now.getTime() + now.getTimezoneOffset() * 60000;
+    const target = new Date(utcMs + tz.tz.offset * 60000);
+    const h = target.getHours();
+    const m = target.getMinutes();
+    const h12 = h === 0 ? 12 : h > 12 ? h - 12 : h;
+    const ampm = h >= 12 ? 'PM' : 'AM';
+    const timeStr = `${h12}:${String(m).padStart(2, '0')} ${ampm}`;
+    return {
+      success: true,
+      message: `Current time in ${tz.tz.name}: ${timeStr}`,
+      voiceMessage: `It's ${timeStr} in ${tz.tz.name}.`,
+    };
+  }
+
+  return { success: false, message: `I don't have a timezone for "${place}". Try a major city or country.` };
+}
+
 function findUnit(name: string): { category: UnitCategory; unit: UnitDef } | null {
   const lower = name.toLowerCase().trim();
   for (const cat of UNIT_CATEGORIES) {
@@ -344,6 +429,81 @@ function convertUnits(value: number, fromStr: string, toStr: string): CommandRes
 }
 
 
+// ── Currency Conversion (live rates, no API key) ──
+const CURRENCY_CODES = new Set([
+  'usd', 'eur', 'gbp', 'jpy', 'aud', 'cad', 'chf', 'cny', 'inr', 'aed', 'sgd',
+  'hkd', 'nzd', 'sek', 'nok', 'dkk', 'krw', 'mxn', 'brl', 'zar', 'rub', 'try',
+  'pln', 'thb', 'idr', 'myr', 'php', 'czk', 'huf', 'ils', 'sar', 'qar', 'kwd',
+  'bhd', 'omr', 'egp', 'ngn', 'pkr', 'bdt', 'lkr', 'vnd', 'twd', 'clp', 'cop',
+  'ars', 'ron', 'isk', 'uah', 'ghs', 'kes',
+]);
+
+const CURRENCY_ALIASES: Record<string, string> = {
+  'dollar': 'usd', 'dollars': 'usd', 'buck': 'usd', 'bucks': 'usd', '$': 'usd',
+  'us dollar': 'usd', 'us dollars': 'usd', 'usd$': 'usd',
+  'euro': 'eur', 'euros': 'eur', '€': 'eur',
+  'pound': 'gbp', 'pounds': 'gbp', 'quid': 'gbp', 'sterling': 'gbp', '£': 'gbp', 'pound sterling': 'gbp',
+  'yen': 'jpy', '¥': 'jpy',
+  'rupee': 'inr', 'rupees': 'inr', '₹': 'inr',
+  'dirham': 'aed', 'dirhams': 'aed',
+  'yuan': 'cny', 'rmb': 'cny', 'renminbi': 'cny',
+  'won': 'krw',
+  'real': 'brl', 'reais': 'brl',
+  'peso': 'mxn', 'pesos': 'mxn',
+  'franc': 'chf', 'francs': 'chf',
+  'riyal': 'sar', 'riyals': 'sar',
+  'ringgit': 'myr', 'baht': 'thb', 'rand': 'zar',
+  'ruble': 'rub', 'rubles': 'rub', 'rouble': 'rub',
+  'lira': 'try', 'shekel': 'ils', 'shekels': 'ils',
+};
+
+function normalizeCurrency(name: string): string | null {
+  const lower = name.toLowerCase().trim().replace(/\.$/, '');
+  if (CURRENCY_ALIASES[lower]) return CURRENCY_ALIASES[lower];
+  if (CURRENCY_CODES.has(lower)) return lower;
+  return null;
+}
+
+function isCurrencyPair(from: string, to: string): boolean {
+  return normalizeCurrency(from) !== null && normalizeCurrency(to) !== null;
+}
+
+async function convertCurrency(value: number, fromStr: string, toStr: string): Promise<CommandResult> {
+  const from = normalizeCurrency(fromStr);
+  const to = normalizeCurrency(toStr);
+  if (!from || !to) return { success: false, message: `Unknown currency: "${!from ? fromStr : toStr}"` };
+  const fromU = from.toUpperCase();
+  const toU = to.toUpperCase();
+
+  if (from === to) {
+    return { success: true, message: `${value} ${fromU} = ${value} ${toU}`, voiceMessage: `That's the same currency, sir — ${value} ${fromU}.` };
+  }
+
+  try {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 4000);
+    const res = await fetch(`https://open.er-api.com/v6/latest/${fromU}`, { signal: controller.signal });
+    clearTimeout(timer);
+    const data: any = await res.json();
+    const rate = data?.rates?.[toU];
+    if (data?.result !== 'success' || typeof rate !== 'number') {
+      return { success: false, message: `Couldn't get a live rate for ${fromU} → ${toU}.` };
+    }
+    const result = value * rate;
+    const rounded = result < 1
+      ? result.toFixed(4).replace(/0+$/, '').replace(/\.$/, '')
+      : result.toLocaleString('en-US', { maximumFractionDigits: 2 });
+    return {
+      success: true,
+      message: `${value.toLocaleString('en-US')} ${fromU} = ${rounded} ${toU}  (rate ${rate.toFixed(4)})`,
+      voiceMessage: `${value.toLocaleString('en-US')} ${fromU} is ${rounded} ${toU}.`,
+    };
+  } catch (err) {
+    const reason = (err as Error).name === 'AbortError' ? 'the rate service timed out' : (err as Error).message;
+    return { success: false, message: `Currency lookup failed — ${reason}.` };
+  }
+}
+
 export class ConversionsModule implements JarvisModule {
   name = 'conversions' as const;
   description = 'Timezone and unit conversions — always accurate, no LLM needed';
@@ -370,6 +530,20 @@ export class ConversionsModule implements JarvisModule {
         return { time: match[1].trim(), from: match[2].trim(), to: match[3].trim() };
       },
     },
+    // ── Current Time in a Place ──
+    // Placed after timezone (which needs an explicit time) so "6 PM IST to GST"
+    // still wins, but before personality's generic clock so "what time is it in
+    // tokyo" gives Tokyo's time, not the local time. The negative lookahead for
+    // "when" avoids stealing the "time in GST when it's 6 PM IST" timezone form.
+    {
+      intent: 'current-time',
+      patterns: [
+        /^what(?:'s| is)?\s+time\s+is\s+it\s+(?:in|at)\s+(?!.*\bwhen\b)(.+?)\??$/i,
+        /^(?:what(?:'s| is)?\s+)?(?:the\s+)?current\s+time\s+(?:in|at)\s+(.+?)\??$/i,
+        /^(?:what(?:'s| is)?\s+)?(?:the\s+)?time\s+(?:in|at)\s+(?!.*\bwhen\b)(.+?)\??$/i,
+      ],
+      extract: (match) => ({ place: match[1].trim() }),
+    },
     // ── Unit Conversion ──
     {
       intent: 'unit',
@@ -393,8 +567,17 @@ export class ConversionsModule implements JarvisModule {
     switch (command.action) {
       case 'timezone':
         return convertTimezone(command.args.time, command.args.from, command.args.to);
-      case 'unit':
-        return convertUnits(parseFloat(command.args.value), command.args.from, command.args.to);
+      case 'current-time':
+        return currentTimeIn(command.args.place);
+      case 'unit': {
+        // Currency uses live rates; real units stay programmatic. Units win
+        // when a token is both (none overlap today, but order makes it explicit).
+        const { from, to, value } = command.args;
+        if (!(findUnit(from) && findUnit(to)) && isCurrencyPair(from, to)) {
+          return convertCurrency(parseFloat(value), from, to);
+        }
+        return convertUnits(parseFloat(value), from, to);
+      }
       default:
         return { success: false, message: `Unknown conversion action: ${command.action}` };
     }

@@ -29,9 +29,9 @@ const SAFE_INTENTS = new Set<string>([
   'process-manager:list-processes', 'process-manager:top-cpu',
   'process-manager:top-memory', 'process-manager:find-process',
   'process-manager:port-check',
-  // conversions — pure
+  // conversions — pure math + read-only live-rate / clock lookups
   'conversions:unit', 'conversions:currency', 'conversions:timezone',
-  'conversions:calculate', 'conversions:math',
+  'conversions:calculate', 'conversions:math', 'conversions:current-time',
   // personality — banter + local time, read-only
   'personality:mood', 'personality:greeting', 'personality:identity',
   'personality:thanks', 'personality:capabilities', 'personality:joke',
