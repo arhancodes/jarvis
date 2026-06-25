@@ -129,9 +129,9 @@ export class SpotifyModule implements JarvisModule {
     {
       intent: 'now-playing',
       patterns: [
-        /^what(?:'s| is) (?:currently )?playing$/i,
+        /^what(?:'?s| is) (?:currently )?playing$/i,
         /^(?:now playing|current (?:song|track))$/i,
-        /^what(?:'s| is) (?:this )?song$/i,
+        /^what(?:'?s| is) (?:this )?song$/i,
         /^(?:spotify )?(?:now playing|what's playing)$/i,
       ],
       extract: () => ({}),
@@ -171,8 +171,11 @@ export class SpotifyModule implements JarvisModule {
     {
       intent: 'search',
       patterns: [
-        /^(?:search|find|look up) (?:on spotify |spotify )?(?:for )?(.+)$/i,
-        /^spotify search (.+)$/i,
+        // Require an explicit Spotify reference so "find me research papers" /
+        // "search the web" don't get hijacked into a music search.
+        /^(?:search|find|look\s+up)\s+(?:on\s+)?spotify\s+(?:for\s+)?(.+)$/i,
+        /^spotify\s+search\s+(.+)$/i,
+        /^(?:search|find|look\s+up)\s+(?:for\s+)?(.+?)\s+on\s+spotify$/i,
       ],
       extract: (match) => ({ query: match[1] || '' }),
     },

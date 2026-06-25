@@ -13,8 +13,10 @@ let nextId = 1;
 const activeTimers: Map<number, ActiveTimer> = new Map();
 
 function parseTimeString(str: string): number | null {
-  // "5 min", "30 seconds", "1 hour", "1h30m", "90s", "2.5 hours", "1:30"
-  const s = str.toLowerCase().trim();
+  // "5 min", "30 seconds", "1 hour", "1h30m", "90s", "2.5 hours", "1:30",
+  // "an hour", "a minute" (article -> 1)
+  const s = str.toLowerCase().trim()
+    .replace(/\b(?:an?|one)\s+(hour|hr|min(?:ute)?|sec(?:ond)?)/gi, '1 $1');
 
   // Handle "1:30" format (min:sec)
   const colonMatch = s.match(/^(\d+):(\d+)$/);
@@ -79,7 +81,7 @@ export class TimerModule implements JarvisModule {
       ],
       extract: (match) => ({ time: match[1].trim() }),
     },
-    // ── Reminder (duration: "in 5 min") ──
+    // ── Reminder (duration, time-first): "remind me in 5 min to call mom" ──
     {
       intent: 'set-reminder',
       patterns: [
@@ -88,15 +90,32 @@ export class TimerModule implements JarvisModule {
       ],
       extract: (match) => ({ time: match[1].trim(), message: match[2].trim() }),
     },
+    // ── Reminder (duration, message-first): "remind me to call mom in 20 minutes" ──
+    {
+      intent: 'set-reminder',
+      patterns: [
+        /^remind\s+(?:me\s+)?(?:to\s+)?(.+?)\s+in\s+(\d+(?:\.\d+)?\s*(?:h(?:ours?|rs?)?|m(?:in(?:utes?)?)?|s(?:ec(?:onds?)?)?)|(?:an?|one)\s+(?:hour|minute|min|second|sec))$/i,
+        /^(?:set\s+)?(?:a\s+)?reminder\s+(?:to\s+)?(.+?)\s+in\s+(\d+(?:\.\d+)?\s*(?:h(?:ours?|rs?)?|m(?:in(?:utes?)?)?|s(?:ec(?:onds?)?)?)|(?:an?|one)\s+(?:hour|minute|min|second|sec))$/i,
+      ],
+      extract: (match) => ({ time: match[2].trim(), message: match[1].trim() }),
+    },
     // ── Reminder at specific time: "remind me at 4:45 to join class" ──
     {
       intent: 'set-reminder-at',
       patterns: [
-        /^remind\s+(?:me\s+)?at\s+(\d{1,2}:\d{2}\s*(?:am|pm)?)\s+(?:to\s+)(.+)/i,
-        /^(?:set\s+)?(?:a\s+)?reminder\s+(?:at\s+|for\s+)?(\d{1,2}:\d{2}\s*(?:am|pm)?)\s+(?:to\s+)(.+)/i,
-        /^(?:set\s+)?(?:a\s+)?reminder\s+(?:at\s+|for\s+)?(\d{1,2}:\d{2}\s*(?:am|pm)?)$/i,
+        /^remind\s+(?:me\s+)?at\s+(\d{1,2}:\d{2}\s*(?:am|pm)?|\d{1,2}\s*(?:am|pm))\s+(?:to\s+)(.+)/i,
+        /^(?:set\s+)?(?:a\s+)?reminder\s+(?:at\s+|for\s+)?(\d{1,2}:\d{2}\s*(?:am|pm)?|\d{1,2}\s*(?:am|pm))\s+(?:to\s+)(.+)/i,
+        // message-first: "remind me to submit the report at 4pm"
+        /^remind\s+(?:me\s+)?to\s+(.+?)\s+at\s+(\d{1,2}:\d{2}\s*(?:am|pm)?|\d{1,2}\s*(?:am|pm))$/i,
+        /^(?:set\s+)?(?:a\s+)?reminder\s+(?:at\s+|for\s+)?(\d{1,2}:\d{2}\s*(?:am|pm)?|\d{1,2}\s*(?:am|pm))$/i,
       ],
-      extract: (match) => ({ time: match[1].trim(), message: match[2]?.trim() || '' }),
+      extract: (match, raw) => {
+        // The message-first pattern captures (message, time); the others (time, message).
+        if (/^remind\s+(?:me\s+)?to\b/i.test(raw) && /\bat\s+\d/i.test(raw)) {
+          return { time: match[2].trim(), message: match[1].trim() };
+        }
+        return { time: match[1].trim(), message: match[2]?.trim() || '' };
+      },
     },
     // ── Alarm (fixed time) ──
     {
@@ -196,14 +215,14 @@ export class TimerModule implements JarvisModule {
   }
 
   private setReminderAt(timeStr: string, message: string): CommandResult {
-    // Parse absolute time: "4:45", "4:45 pm", "16:30"
-    const match = timeStr.match(/^(\d{1,2}):(\d{2})\s*(am|pm)?$/i);
+    // Parse absolute time: "4:45", "4:45 pm", "16:30", "4pm", "4 pm"
+    const match = timeStr.match(/^(\d{1,2})(?::(\d{2}))?\s*(am|pm)?$/i);
     if (!match) {
       return { success: false, message: `Could not parse time: "${timeStr}". Try "4:45 pm" or "16:00".` };
     }
 
     let hours = parseInt(match[1], 10);
-    const minutes = parseInt(match[2], 10);
+    const minutes = parseInt(match[2] ?? '0', 10);
     const ampm = match[3]?.toLowerCase();
 
     if (ampm === 'pm' && hours !== 12) hours += 12;

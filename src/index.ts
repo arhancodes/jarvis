@@ -363,13 +363,16 @@ export function boot(): void {
   registry.register(scheduler);
   registry.register(new ConversionsModule());
   registry.register(new PersonalityModule());
+  // Specific, referential handlers must beat ai-chat's generic "what is X" /
+  // "explain X" / "summarize X" — so screen questions, URL reads, and research
+  // queries route correctly instead of being swallowed into a generic LLM chat.
+  registry.register(new ScreenAwarenessModule());
+  registry.register(new ResearchModule());
+  registry.register(new BrowserControlModule());
   registry.register(new AIChatModule());
   registry.register(new SmartAssistModule());
   registry.register(new WeatherNewsModule());
   registry.register(new SmartRoutinesModule());
-  registry.register(new ScreenAwarenessModule());
-  registry.register(new ResearchModule());
-  registry.register(new BrowserControlModule());
   registry.register(new WhatsAppModule());
   registry.register(new CommsStackModule());
   registry.register(new SiteMonitorModule());

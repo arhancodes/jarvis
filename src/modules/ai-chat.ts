@@ -53,8 +53,9 @@ export class AIChatModule implements JarvisModule {
       intent: 'explain',
       patterns: [
         /^explain\s+(?:file\s+)?(?!(?:this|that|it|the\s+text|selection|the\s+selection|(?:my\s+|the\s+)?screen)\s*$)(.+)/i,
-        // Exclude "what is on my screen" -> that's a screen-awareness question.
-        /^(?:what\s+(?:is|does|are))\s+(?!on\s+(?:my\s+|the\s+)?screen\b)(.+)/i,
+        // Exclude screen questions (screen-awareness) and calendar lookups
+        // (calendar) — both are registered to handle those more specifically.
+        /^what(?:'?s|\s+(?:is|does|are))\s+(?!on\s+(?:my\s+|the\s+)?(?:screen|calendar|schedule|agenda)\b)(?!(?:my\s+|the\s+)?next\s+(?:meeting|event|appointment|class))(.+)/i,
       ],
       extract: (match) => ({ file: (match[1] || match[2]).trim() }),
     },

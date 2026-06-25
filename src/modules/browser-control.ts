@@ -50,6 +50,9 @@ export class BrowserControlModule implements JarvisModule {
         /^(?:read|summari[sz]e|get)\s+(https?:\/\/\S+)$/i,
         /^(?:read|summari[sz]e)\s+((?:www\.)?[\w-]+\.\w{2,}\S*)$/i,
         /^what\s+does\s+(https?:\/\/\S+|(?:www\.)?[\w-]+\.\w{2,}\S*)\s+say(?:\s+about\s+(.+))?$/i,
+        // A read/summarize verb anywhere followed by a URL: "summarize this
+        // article https://..." / "read nytimes.com and give me the gist".
+        /^(?:read|summari[sz]e|get|tldr|give\s+me\s+(?:the\s+)?(?:gist|summary)\s+of)\b.*?(https?:\/\/\S+|(?:www\.)?[\w-]+\.(?:com|org|net|io|dev|ai|co|edu|gov|news|uk)\b\S*)/i,
       ],
       extract: (match) => ({ url: match[1].trim(), question: (match[2] || '').trim() }),
     },
@@ -57,7 +60,7 @@ export class BrowserControlModule implements JarvisModule {
       intent: 'read-page',
       patterns: [
         /^(?:read|extract|get)\s+(?:the\s+)?page$/i,
-        /^what(?:'s| is)\s+on\s+(?:the|this)\s+page$/i,
+        /^what(?:'?s| is)\s+on\s+(?:the|this)\s+page$/i,
         /^read\s+(?:the\s+)?(?:web\s*)?page$/i,
         /^page\s+(?:content|text)$/i,
       ],

@@ -79,7 +79,7 @@ export class SmartHomeModule implements JarvisModule {
     {
       intent: 'set',
       patterns: [
-        /^set\s+(?:the\s+)?(.+?)\s+to\s+(.+)$/i,
+        /^set\s+(?:the\s+)?(?!(?:an?\s+)?(?:reminder|alarm|timer|countdown)\b)(.+?)\s+to\s+(.+)$/i,
         /^(?:change|adjust)\s+(?:the\s+)?(.+?)\s+to\s+(.+)$/i,
       ],
       extract: (match) => ({ device: match[1].trim(), value: match[2].trim() }),

@@ -341,7 +341,7 @@ export class MorningDigestModule implements JarvisModule {
       patterns: [
         /^quick\s+(?:briefing|update|brief|digest)$/i,
         /^(?:give\s+me\s+a?\s*)?quick\s+(?:morning\s+)?(?:update|briefing)$/i,
-        /^(?:what(?:'s| is)\s+)?(?:the\s+)?quick\s+(?:rundown|summary)$/i,
+        /^(?:what(?:'?s| is)\s+)?(?:the\s+)?quick\s+(?:rundown|summary)$/i,
       ],
       extract: () => ({}),
     },

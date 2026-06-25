@@ -8,8 +8,20 @@ export class ProcessManagerModule implements JarvisModule {
 
   patterns: PatternDefinition[] = [
     {
+      // Must precede kill-process so "kill port 3000" frees the port instead of
+      // trying to terminate a process literally named "port 3000".
+      intent: 'kill-port',
+      patterns: [
+        /^kill\s+(?:whatever(?:'?s| is)\s+on\s+)?port\s+(\d+)/i,
+        /^free\s+(?:up\s+)?port\s+(\d+)/i,
+      ],
+      extract: (match) => ({ port: match[1] }),
+    },
+    {
       intent: 'kill-process',
       patterns: [
+        // "kill all the node processes" / "kill the chrome processes" -> node/chrome
+        /^kill\s+(?:all\s+(?:the\s+)?|the\s+)?(.+?)\s+process(?:es)?$/i,
         /^kill\s+(?:process\s+)?(?:named?\s+)?["']?(.+?)["']?$/i,
         /^(?:force\s+)?kill\s+(.+)/i,
         /^killall\s+(.+)/i,
@@ -20,7 +32,8 @@ export class ProcessManagerModule implements JarvisModule {
       intent: 'top-cpu',
       patterns: [
         /^(?:top|show)\s+(?:(\d+)\s+)?(?:cpu|processor)\s+(?:hogs?|processes|consumers)/i,
-        /^(?:what(?:'s| is)\s+)?(?:using|eating|hogging)\s+(?:the\s+)?cpu/i,
+        /^(?:show|list)\s+(?:me\s+)?(?:the\s+)?(?:top\s+)?cpu\s+(?:hogs?|consumers|processes)/i,
+        /^(?:what(?:'?s| is)\s+)?(?:using|eating|hogging)\s+(?:the\s+)?cpu/i,
         /^cpu\s+hogs?/i,
       ],
       extract: (match) => ({ count: match[1] || '5' }),
@@ -29,7 +42,7 @@ export class ProcessManagerModule implements JarvisModule {
       intent: 'top-memory',
       patterns: [
         /^(?:top|show)\s+(?:(\d+)\s+)?(?:memory|mem|ram)\s+(?:hogs?|processes|consumers)/i,
-        /^(?:what(?:'s| is)\s+)?(?:using|eating|hogging)\s+(?:the\s+)?(?:memory|ram)/i,
+        /^(?:what(?:'?s| is)\s+)?(?:using|eating|hogging)\s+(?:the\s+)?(?:memory|ram)/i,
         /^(?:memory|ram)\s+hogs?/i,
       ],
       extract: (match) => ({ count: match[1] || '5' }),
@@ -37,18 +50,10 @@ export class ProcessManagerModule implements JarvisModule {
     {
       intent: 'port-check',
       patterns: [
-        /^(?:what(?:'s| is)?\s+)?(?:using|on)\s+port\s+(\d+)/i,
+        /^(?:what(?:'?s| is)?\s+)?(?:using|on)\s+port\s+(\d+)/i,
         /^port\s+(\d+)/i,
         /^(?:check|show)\s+port\s+(\d+)/i,
-        /^(?:who(?:'s| is)?\s+)?(?:listening\s+on|using)\s+(?:port\s+)?(\d+)/i,
-      ],
-      extract: (match) => ({ port: match[1] }),
-    },
-    {
-      intent: 'kill-port',
-      patterns: [
-        /^kill\s+(?:whatever(?:'s| is)\s+on\s+)?port\s+(\d+)/i,
-        /^free\s+(?:up\s+)?port\s+(\d+)/i,
+        /^(?:who(?:'?s| is)?\s+)?(?:listening\s+on|using|on)\s+(?:port\s+)?(\d+)/i,
       ],
       extract: (match) => ({ port: match[1] }),
     },
@@ -56,8 +61,15 @@ export class ProcessManagerModule implements JarvisModule {
       intent: 'find-process',
       patterns: [
         /^(?:find|search)\s+process\s+(.+)/i,
-        /^(?:is\s+)?(.+?)\s+running\??$/i,
         /^pgrep\s+(.+)/i,
+        // "check if spotify is running", "check whether docker is running" -> spotify/docker
+        /^check\s+(?:if|whether)\s+(.+?)\s+(?:is\s+)?running\b.*$/i,
+        /^is\s+(.+?)\s+running\??$/i,                          // "is spotify running"
+        // "<app> is running" / "<app> running" — bounded to ≤3 words so filler
+        // clauses ("can you check if spotify is running") fall through to the
+        // filler-stripped retry instead of being captured wholesale.
+        /^((?:[\w.\-]+\s+){0,2}[\w.\-]+)\s+is\s+running\??$/i,  // "google chrome is running"
+        /^([\w.\-]+)\s+running\??$/i,                          // "spotify running"
       ],
       extract: (match) => ({ name: match[1].trim() }),
     },

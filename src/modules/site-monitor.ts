@@ -144,7 +144,7 @@ export class SiteMonitorModule implements JarvisModule {
         /^(?:check|are)\s+(?:my\s+)?(?:sites?|apps?|services?|products?)\s+(?:online|up|running|status|working|live)/i,
         /^status\s+(?:check|report)$/i,
         /^(?:are\s+)?(?:all\s+)?(?:my\s+)?(?:sites?|apps?|services?|products?)\s+(?:up|online|working|running)/i,
-        /^(?:how\s+are|what(?:'s| is)\s+the\s+status\s+of)\s+(?:my\s+)?(?:sites?|apps?|services?|products?|everything)/i,
+        /^(?:how\s+are|what(?:'?s| is)\s+the\s+status\s+of)\s+(?:my\s+)?(?:sites?|apps?|services?|products?|everything)/i,
         /^(?:system|service|product)\s+status$/i,
       ],
       extract: () => ({}),
@@ -152,8 +152,12 @@ export class SiteMonitorModule implements JarvisModule {
     {
       intent: 'check-one',
       patterns: [
-        /^(?:is|check)\s+(.+?)\s+(?:online|up|running|working|live|down)/i,
-        /^(?:check|ping|status\s+of)\s+(.+)/i,
+        // Only treat as a site check when the subject looks like a site/host —
+        // contains a dot (domain) or is explicitly "site/app/service/url X".
+        /^(?:is|check)\s+((?:https?:\/\/)?[\w-]+\.[\w.-]+\S*)\s+(?:online|up|running|working|live|down)/i,
+        /^(?:is|check)\s+(?:my\s+)?(?:site|website|app|service|server|api|url)\s+(.+?)\s+(?:online|up|running|working|live|down)/i,
+        /^(?:check|ping|status\s+of)\s+((?:https?:\/\/)?[\w-]+\.[\w.-]+\S*)$/i,
+        /^(?:check|ping|status\s+of)\s+(?:my\s+)?(?:site|website|app|service|server|api|url)\s+(.+)/i,
       ],
       extract: (match) => ({ site: match[1].trim() }),
     },

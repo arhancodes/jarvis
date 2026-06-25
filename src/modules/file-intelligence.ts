@@ -56,7 +56,7 @@ export class FileIntelligenceModule implements JarvisModule {
       patterns: [
         /^recent\s+downloads?$/i,
         /^(?:show|list|get)\s+(?:my\s+)?recent\s+downloads?$/i,
-        /^(?:what(?:'s| is|'s)\s+in\s+)?(?:my\s+)?downloads?$/i,
+        /^(?:what(?:'?s| is)\s+in\s+)?(?:my\s+)?downloads?$/i,
         /^latest\s+downloads?$/i,
       ],
       extract: () => ({}),
@@ -79,7 +79,7 @@ export class FileIntelligenceModule implements JarvisModule {
         /^large\s+files?(?:\s+in\s+(.+))?$/i,
         /^(?:find|show|list)\s+large\s+files?(?:\s+in\s+(.+))?$/i,
         /^big\s+files?(?:\s+in\s+(.+))?$/i,
-        /^(?:what(?:'s| is)\s+)?taking\s+(?:up\s+)?space(?:\s+in\s+(.+))?$/i,
+        /^(?:what(?:'?s| is)\s+)?taking\s+(?:up\s+)?space(?:\s+in\s+(.+))?$/i,
       ],
       extract: (match) => ({ directory: match[1]?.trim() || homedir() }),
     },

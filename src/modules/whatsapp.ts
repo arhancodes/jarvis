@@ -34,6 +34,12 @@ export class WhatsAppModule implements JarvisModule {
     {
       intent: 'send',
       patterns: [
+        // Natural verbs: "shoot/drop/fire off/send Dave a (quick) whatsapp/message saying X"
+        /^(?:shoot|drop|fire\s+off|send|message|whatsapp)\s+(.+?)\s+(?:a\s+)?(?:quick\s+|little\s+)?(?:whatsapp|message|text|msg|note)\s+(?:saying|that\s+says|to\s+say|:)\s*["']?(.+?)["']?$/i,
+        // "fire off/send a message to <name> about/saying X"
+        /^(?:shoot|drop|fire\s+off|send)\s+(?:a\s+|off\s+a\s+)?(?:quick\s+)?(?:whatsapp|message|text|msg|note)\s+to\s+(.+?)\s+(?:about|saying|that\s+says|re|:)\s+["']?(.+?)["']?$/i,
+        // "ping/text/message <name> and let them know / tell them / that / saying X"
+        /^(?:ping|text|message|whatsapp|hit\s+up)\s+(.+?)\s+(?:and\s+)?(?:let\s+(?:them|him|her)\s+know(?:\s+that)?|tell\s+(?:them|him|her)(?:\s+that)?|saying|that)\s+["']?(.+?)["']?$/i,
         /^(?:send\s+)?(?:a\s+)?whatsapp\s+(?:to\s+)?(.+?)[\s:]+(?:saying\s+|message\s+)?["']?(.+?)["']?$/i,
         /^(?:message|text|whatsapp)\s+(.+?)\s+(?:on\s+whatsapp\s+)?(?:saying|:)\s*["']?(.+?)["']?$/i,
         /^(?:send\s+(?:a\s+)?(?:message|text)\s+(?:to\s+)?)(.+?)\s+(?:on\s+whatsapp\s+)?(?:saying|:)\s*["']?(.+?)["']?$/i,

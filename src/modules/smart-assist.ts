@@ -129,14 +129,14 @@ const NLU_MAPPINGS: Array<{
 }> = [
   {
     patterns: [
-      /(?:show|what(?:'s| is)|which)\s+(?:process(?:es)?|app(?:s)?)\s+(?:(?:is|are)\s+)?(?:using|eating|consuming|taking)\s+(?:the\s+)?most\s+(?:cpu|processor)/i,
+      /(?:show|what(?:'?s| is)|which)\s+(?:process(?:es)?|app(?:s)?)\s+(?:(?:is|are)\s+)?(?:using|eating|consuming|taking)\s+(?:the\s+)?most\s+(?:cpu|processor)/i,
       /(?:heaviest|biggest|top|worst)\s+(?:cpu\s+)?processes/i,
     ],
     module: 'process-manager', action: 'top-cpu',
   },
   {
     patterns: [
-      /(?:show|what(?:'s| is)|which)\s+(?:process(?:es)?|app(?:s)?)\s+(?:(?:is|are)\s+)?(?:using|eating|consuming|taking)\s+(?:the\s+)?most\s+(?:memory|ram)/i,
+      /(?:show|what(?:'?s| is)|which)\s+(?:process(?:es)?|app(?:s)?)\s+(?:(?:is|are)\s+)?(?:using|eating|consuming|taking)\s+(?:the\s+)?most\s+(?:memory|ram)/i,
       /(?:heaviest|biggest|top|worst)\s+memory\s+(?:processes|hogs)/i,
     ],
     module: 'process-manager', action: 'top-memory',
@@ -225,7 +225,7 @@ const NLU_MAPPINGS: Array<{
   },
   {
     patterns: [
-      /what(?:'s| is)\s+(?:currently\s+)?playing/i,
+      /what(?:'?s| is)\s+(?:currently\s+)?playing/i,
       /what\s+song\s+is\s+(?:this|playing)/i,
       /(?:which|what)\s+track/i,
     ],
@@ -251,7 +251,7 @@ const NLU_MAPPINGS: Array<{
   },
   {
     patterns: [
-      /(?:what(?:'s| is)|check)\s+(?:my\s+)?(?:ip|ip\s+address)/i,
+      /(?:what(?:'?s| is)|check)\s+(?:my\s+)?(?:ip|ip\s+address)/i,
     ],
     module: 'system-monitor', action: 'network',
   },
@@ -278,15 +278,15 @@ const NLU_MAPPINGS: Array<{
   {
     patterns: [
       /(?:am\s+i|are\s+we)\s+(?:on|connected\s+to)\s+(?:the\s+)?(?:internet|wi-?fi)/i,
-      /(?:what(?:'s| is)\s+(?:my\s+)?(?:wi-?fi|network|connection))/i,
+      /(?:what(?:'?s| is)\s+(?:my\s+)?(?:wi-?fi|network|connection))/i,
     ],
     module: 'system-control', action: 'wifi-status',
   },
   // ── Weather & News ──
   {
     patterns: [
-      /(?:what(?:'s| is)\s+(?:the\s+)?weather\s+like)/i,
-      /(?:how(?:'s| is)\s+it)\s+(?:outside|out\s+there)/i,
+      /(?:what(?:'?s| is)\s+(?:the\s+)?weather\s+like)/i,
+      /(?:how(?:'?s| is)\s+it)\s+(?:outside|out\s+there)/i,
       /(?:is\s+it|will\s+it\s+be)\s+(?:going\s+to\s+)?(?:rain|snow|cold|hot|warm|sunny)\s+(?:today|tomorrow|tonight)/i,
       /(?:do\s+i\s+need)\s+(?:an?\s+)?(?:umbrella|jacket|coat)/i,
     ],
@@ -294,8 +294,8 @@ const NLU_MAPPINGS: Array<{
   },
   {
     patterns: [
-      /(?:any|what(?:'s| is))\s+(?:the\s+)?(?:latest\s+)?news(?:\s+today)?$/i,
-      /what(?:'s| is)\s+(?:going\s+on|happening)\s+(?:in\s+the\s+world|today)/i,
+      /(?:any|what(?:'?s| is))\s+(?:the\s+)?(?:latest\s+)?news(?:\s+today)?$/i,
+      /what(?:'?s| is)\s+(?:going\s+on|happening)\s+(?:in\s+the\s+world|today)/i,
       /(?:give\s+me|tell\s+me)\s+(?:the\s+)?(?:latest\s+)?(?:news|headlines)/i,
     ],
     module: 'weather-news', action: 'news',
@@ -303,7 +303,7 @@ const NLU_MAPPINGS: Array<{
   // ── Screen Awareness ──
   {
     patterns: [
-      /what(?:'s| is)\s+(?:on\s+)?(?:my\s+|the\s+)?screen/i,
+      /what(?:'?s| is)\s+(?:on\s+)?(?:my\s+|the\s+)?screen/i,
       /what\s+am\s+i\s+(?:looking\s+at|reading|viewing|seeing)/i,
       /(?:can\s+you\s+)?(?:read|see)\s+(?:my\s+|the\s+)?screen/i,
     ],
@@ -311,8 +311,8 @@ const NLU_MAPPINGS: Array<{
   },
   {
     patterns: [
-      /(?:summarize|describe)\s+(?:what(?:'s| is)\s+(?:on\s+)?)?(?:my\s+|the\s+)?screen/i,
-      /(?:tell\s+me)\s+(?:about\s+)?(?:what(?:'s| is)\s+(?:on\s+)?)?(?:my\s+)?screen/i,
+      /(?:summarize|describe)\s+(?:what(?:'?s| is)\s+(?:on\s+)?)?(?:my\s+|the\s+)?screen/i,
+      /(?:tell\s+me)\s+(?:about\s+)?(?:what(?:'?s| is)\s+(?:on\s+)?)?(?:my\s+)?screen/i,
     ],
     module: 'screen-awareness', action: 'summarize-screen',
   },
@@ -343,7 +343,7 @@ const NLU_MAPPINGS: Array<{
   {
     patterns: [
       /(?:find|look\s+up|search\s+for)\s+(?:academic\s+)?(?:papers?|research|articles?|studies)\s+(?:on|about|regarding)\s+(.+)/i,
-      /(?:what(?:'s| is)\s+the\s+latest\s+research\s+on)\s+(.+)/i,
+      /(?:what(?:'?s| is)\s+the\s+latest\s+research\s+on)\s+(.+)/i,
       /(?:i\s+need|get\s+me)\s+(?:papers?|research|articles?)\s+(?:on|about)\s+(.+)/i,
     ],
     module: 'research', action: 'research',
@@ -454,7 +454,7 @@ const NLU_MAPPINGS: Array<{
     patterns: [
       /(?:are|check)\s+(?:my\s+)?(?:sites?|apps?|services?|products?)\s+(?:online|up|running|working|down)/i,
       /(?:site|app|service|product|system)\s+(?:status|check|report)/i,
-      /(?:how\s+are|what(?:'s| is)\s+the\s+status\s+of)\s+(?:my\s+)?(?:sites?|apps?|services?|products?|everything)/i,
+      /(?:how\s+are|what(?:'?s| is)\s+the\s+status\s+of)\s+(?:my\s+)?(?:sites?|apps?|services?|products?|everything)/i,
       /(?:is\s+)?everything\s+(?:online|up|running|working)/i,
     ],
     module: 'site-monitor', action: 'check-all',
@@ -481,11 +481,11 @@ const NLU_MAPPINGS: Array<{
   },
   {
     patterns: [
-      /what(?:'s| is)\s+this\s+error/i,
+      /what(?:'?s| is)\s+this\s+error/i,
       /what\s+does\s+this\s+(?:mean|say)/i,
       /why\s+(?:isn't|won't|can't|doesn't)\s+(?:this|it)\s+work/i,
-      /(?:explain|read)\s+(?:this|what(?:'s| is)\s+on\s+(?:my\s+)?screen)/i,
-      /what(?:'s| is)\s+(?:wrong|the\s+(?:error|issue|problem))/i,
+      /(?:explain|read)\s+(?:this|what(?:'?s| is)\s+on\s+(?:my\s+)?screen)/i,
+      /what(?:'?s| is)\s+(?:wrong|the\s+(?:error|issue|problem))/i,
       /(?:debug|fix)\s+this/i,
       /help\s+(?:me\s+)?(?:with\s+)?this/i,
     ],

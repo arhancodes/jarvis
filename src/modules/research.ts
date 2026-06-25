@@ -466,6 +466,8 @@ export class ResearchModule implements JarvisModule {
       patterns: [
         /^quick(?:ly)?\s+(?:research|look\s+up|search|look)\s+(.+)$/i,
         /^look\s+up\s+(.+)$/i,
+        // "find me some research papers on X", "find articles about Y"
+        /^(?:find|get|search\s+for)\s+(?:me\s+)?(?:some\s+)?(?:research|academic|scientific)?\s*(?:papers?|articles?|studies|literature|info(?:rmation)?)\s+(?:on|about|regarding|for)\s+(.+)$/i,
       ],
       extract: (match) => ({ topic: (match[1] || '').trim() }),
     },

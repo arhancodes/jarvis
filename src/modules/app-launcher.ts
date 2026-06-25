@@ -26,16 +26,25 @@ export class AppLauncherModule implements JarvisModule {
       patterns: [
         /^close\s+(.+)/i,
         /^quit\s+(.+)/i,
-        /^kill\s+(.+)/i,
+        // "kill <app>" but NOT "kill port 3000" / "kill the node processes" —
+        // those belong to process-manager (registered later, reached on fall-through).
+        /^kill\s+(?!.*\bport\s+\d)(?!.*\bprocess(?:es)?\b)(.+)/i,
         /^(?:shut down|exit)\s+(.+)/i,
       ],
-      extract: (match) => ({ appName: match[1].trim() }),
+      // Drop a trailing reason clause: "chrome it's frozen" -> "chrome".
+      extract: (match) => ({
+        appName: match[1].trim()
+          .replace(/\s+(?:it'?s|its|cause|because|since|coz|cuz)\b.*$/i, '')
+          .replace(/\s*[-–,].*$/, '')
+          .trim(),
+      }),
     },
     {
       intent: 'switch',
       patterns: [
         /^switch\s+to\s+(.+)/i,
-        /^go\s+to\s+(.+)/i,
+        // "go to <app>" but NOT "go to github.com" (a URL → browser-control).
+        /^go\s+to\s+(?!\S+\.\w{2,})(.+)/i,
         /^focus\s+(?:on\s+)?(.+)/i,
       ],
       extract: (match) => ({ appName: match[1].trim() }),
@@ -44,7 +53,7 @@ export class AppLauncherModule implements JarvisModule {
       intent: 'list',
       patterns: [
         /^(?:list|show|what)\s*(?:are\s+)?(?:the\s+)?(?:running\s+)?apps/i,
-        /^(?:what(?:'s| is) (?:running|open))/i,
+        /^(?:what(?:'?s| is) (?:running|open))/i,
         /^running\s+apps/i,
       ],
       extract: () => ({}),

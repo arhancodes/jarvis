@@ -39,7 +39,7 @@ export class YouTubeToolsModule implements JarvisModule {
       intent: 'trending',
       patterns: [
         /^(?:youtube|yt)\s+trending/i,
-        /^what(?:'s| is)\s+trending\s+on\s+(?:youtube|yt)/i,
+        /^what(?:'?s| is)\s+trending\s+on\s+(?:youtube|yt)/i,
         /^trending\s+(?:on\s+)?(?:youtube|yt)/i,
         /^show\s+(?:me\s+)?(?:youtube|yt)\s+trending/i,
       ],

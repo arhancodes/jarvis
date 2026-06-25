@@ -34,11 +34,11 @@ export class WeatherNewsModule implements JarvisModule {
     {
       intent: 'weather',
       patterns: [
-        /^(?:what(?:'s| is) the )?weather(?:\s+(?:in|for|at)\s+(.+))?$/i,
-        /^(?:how(?:'s| is) the )?weather(?:\s+(?:in|for|at)\s+(.+))?$/i,
+        /^(?:what(?:'?s| is) the )?weather(?:\s+(?:in|for|at)\s+(.+))?$/i,
+        /^(?:how(?:'?s| is) the )?weather(?:\s+(?:in|for|at)\s+(.+))?$/i,
         /^weather\s+(?:in|for|at)\s+(.+)/i,
         /^weather$/i,
-        /^(?:what(?:'s| is) (?:the )?)?(?:temperature|temp)(?:\s+(?:in|for|at)\s+(.+))?$/i,
+        /^(?:what(?:'?s| is) (?:the )?)?(?:temperature|temp)(?:\s+(?:in|for|at)\s+(.+))?$/i,
         /^(?:is it|will it)\s+(?:going to\s+)?(?:rain|snow|sunny|cold|hot|warm)/i,
       ],
       extract: (match) => ({ location: (match[1] || '').trim() }),
@@ -47,14 +47,14 @@ export class WeatherNewsModule implements JarvisModule {
       intent: 'forecast',
       patterns: [
         /^forecast(?:\s+(?:in|for|at)\s+(.+))?$/i,
-        /^(?:what(?:'s| is) the )?forecast/i,
+        /^(?:what(?:'?s| is) the )?forecast/i,
       ],
       extract: (match) => ({ location: (match[1] || '').trim() }),
     },
     {
       intent: 'news',
       patterns: [
-        /^(?:(?:what(?:'s| is)|show(?:\s+me)?)\s+(?:the\s+|in\s+the\s+)?)?news(?:\s+(?:about|on|for)\s+(.+))?$/i,
+        /^(?:(?:what(?:'?s| is)|show(?:\s+me)?)\s+(?:the\s+|in\s+the\s+)?)?news(?:\s+(?:about|on|for)\s+(.+))?$/i,
         /^headlines?(?:\s+(?:about|on|for)\s+(.+))?$/i,
         /^(?:top|latest)\s+(?:news|headlines?)(?:\s+(?:about|on|for)\s+(.+))?$/i,
       ],

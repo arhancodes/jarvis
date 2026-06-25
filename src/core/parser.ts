@@ -21,6 +21,28 @@ function looksLikePath(text: string): boolean {
   return /[~\/\\]/.test(text) || /\.\w{1,5}$/.test(text);
 }
 
+/**
+ * Strip leading conversational filler ("hey jarvis,", "can you", "please",
+ * "I need you to") and trailing politeness ("please", "for me", "thanks") so a
+ * naturally-spoken request can be matched by the same patterns as its terse
+ * form. Idempotent. Returns the same string if there's nothing to strip.
+ */
+function stripFillers(input: string): string {
+  let s = input.trim();
+  let prev = '';
+  while (s !== prev && s.length > 0) {
+    prev = s;
+    s = s.replace(/^(?:hey|hi|hello|heya|hiya|yo|sup|ok|okay|um|uh|so|well|alright)\b[,!.]?\s+/i, '');
+    s = s.replace(/^(?:jarvis|computer)\b[,!.]?\s+/i, '');
+    s = s.replace(/^(?:can|could|would|will)\s+(?:you|ya)\s+(?:please\s+)?/i, '');
+    s = s.replace(/^i\s+(?:want|need|would\s+like)\s+(?:you\s+)?to\s+/i, '');
+    s = s.replace(/^please\s+/i, '');
+  }
+  // Trailing politeness
+  s = s.replace(/[,\s]+(?:please|for\s+me|thanks?|thank\s+you)\s*[!.?]*$/i, '');
+  return s.trim();
+}
+
 // ── Levenshtein distance for typo tolerance ──
 export function levenshtein(a: string, b: string): number {
   const m = a.length, n = b.length;
@@ -73,7 +95,24 @@ export function splitChainedCommands(input: string): string[] {
   return parts.filter(Boolean);
 }
 
-export async function parse(raw: string): Promise<ParsedCommand | null> {
+/** Phase 3 helper: first registered module pattern that matches, else null. */
+function matchExactPatterns(input: string): ParsedCommand | null {
+  for (const { module, pattern: patternDef } of registry.getAllPatterns()) {
+    for (const regex of patternDef.patterns) {
+      const match = input.match(regex);
+      if (match) {
+        return {
+          module, action: patternDef.intent,
+          args: patternDef.extract(match, input),
+          raw: input, confidence: 1.0,
+        };
+      }
+    }
+  }
+  return null;
+}
+
+export async function parse(raw: string, _retry = false): Promise<ParsedCommand | null> {
   let input = raw.trim();
   if (!input) return null;
 
@@ -91,7 +130,7 @@ export async function parse(raw: string): Promise<ParsedCommand | null> {
   const openMatch = input.match(/^open\s+(.+)/i);
   if (openMatch) {
     const target = openMatch[1].trim();
-    const isFileOp = /^(folder|directory|dir)\s+/i.test(target) || looksLikePath(target);
+    const isFileOp = /\b(folder|directory|dir)\b/i.test(target) || looksLikePath(target);
     if (isFileOp) {
       const fileOpsPatterns = registry.getAllPatterns().filter(p => p.module === 'file-ops');
       for (const { module, pattern: patternDef } of fileOpsPatterns) {
@@ -109,17 +148,18 @@ export async function parse(raw: string): Promise<ParsedCommand | null> {
     }
   }
 
-  // Phase 3: Try all registered module patterns (exact regex match)
-  for (const { module, pattern: patternDef } of registry.getAllPatterns()) {
-    for (const regex of patternDef.patterns) {
-      const match = input.match(regex);
-      if (match) {
-        return {
-          module, action: patternDef.intent,
-          args: patternDef.extract(match, input),
-          raw: input, confidence: 1.0,
-        };
-      }
+  // Phase 3: Try all registered module patterns (exact regex match).
+  const exact = matchExactPatterns(input);
+  if (exact) return exact;
+
+  // Phase 3b: Retry exact match on the filler-stripped form BEFORE the low-
+  // confidence keyword/fuzzy fallbacks — so "yo show me the cpu hogs" matches
+  // the process top-cpu pattern instead of the bare "cpu" keyword.
+  if (!_retry) {
+    const stripped = stripFillers(input);
+    if (stripped && stripped.toLowerCase() !== input.toLowerCase()) {
+      const strippedExact = matchExactPatterns(stripped);
+      if (strippedExact) return { ...strippedExact, raw: input };
     }
   }
 
@@ -150,7 +190,6 @@ export async function parse(raw: string): Promise<ParsedCommand | null> {
     windows: { module: 'window-manager', action: 'list-windows' },
     workflows: { module: 'workflow', action: 'list-workflows' },
     shortcuts: { module: 'workflow', action: 'list-shortcuts' },
-    scheduled: { module: 'scheduler', action: 'list-tasks' },
     cron: { module: 'scheduler', action: 'list-tasks' },
     ps: { module: 'process-manager', action: 'list-processes' },
     models: { module: 'ai-chat', action: 'ai-status' },
@@ -193,6 +232,18 @@ export async function parse(raw: string): Promise<ParsedCommand | null> {
           return { module, action, args: {}, raw: input, confidence: 0.4 };
         }
       }
+    }
+  }
+
+  // Phase 6: Filler-prefix retry. If the literal phrasing matched nothing,
+  // strip conversational filler ("hey jarvis,", "can you", "please") and try
+  // once more — so "hey what is the capital of France" routes like the bare
+  // "what is the capital of France". Only runs once (_retry guard).
+  if (!_retry) {
+    const stripped = stripFillers(input);
+    if (stripped && stripped.toLowerCase() !== input.toLowerCase()) {
+      const retry = await parse(stripped, true);
+      if (retry) return { ...retry, raw: input };
     }
   }
 

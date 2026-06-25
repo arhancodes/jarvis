@@ -26,7 +26,7 @@ export class ClipboardModule implements JarvisModule {
       intent: 'paste',
       patterns: [
         /^paste$/i,
-        /^(?:show|get|what(?:'s| is)\s+(?:in\s+)?(?:the\s+)?)?clipboard$/i,
+        /^(?:show|get|what(?:'?s| is)\s+(?:in\s+)?(?:the\s+)?)?clipboard$/i,
         /^pbpaste$/i,
       ],
       extract: () => ({}),

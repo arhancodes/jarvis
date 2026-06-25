@@ -93,7 +93,7 @@ export class ScreenAwarenessModule implements JarvisModule {
       // RAW OCR dump (only when explicitly asked for the text) — not for questions.
       intent: 'read-screen',
       patterns: [
-        /^read\s+(?:my\s+|the\s+)?screen$/i,
+        /^read\s+(?:my\s+|the\s+)?screen(?:\s+(?:out\s+loud|aloud|to\s+me))?$/i,
         /^screen\s+(?:text|content|read)$/i,
         /^ocr$/i,
       ],
@@ -103,8 +103,8 @@ export class ScreenAwarenessModule implements JarvisModule {
       // Questions about the screen -> concise Claude-vision summary (NOT a raw dump).
       intent: 'summarize-screen',
       patterns: [
-        /^summarize\s+(?:my\s+|the\s+)?screen$/i,
-        /^what(?:'?s| is)\s+on\s+(?:my\s+|the\s+)?screen$/i,
+        /^summari[sz]e\s+(?:what(?:'?s| is)\s+(?:on|is\s+on)\s+)?(?:my\s+|the\s+)?screen$/i,
+        /^what(?:'?s| is)\s+on\s+(?:my\s+|the\s+)?screen(?:\s+(?:right\s+now|now|currently))?$/i,
         /^what\s+am\s+i\s+(?:looking\s+at|viewing|reading)$/i,
         /^(?:what(?:'?s| is)\s+)?(?:happening|going on)\s+(?:on\s+)?(?:my\s+)?screen$/i,
         /^screen\s+summary$/i,
@@ -136,11 +136,17 @@ export class ScreenAwarenessModule implements JarvisModule {
     {
       intent: 'screen-question',
       patterns: [
-        /^what(?:'s| is)\s+this\s+(?:error|warning|message|notification)[?]?$/i,
+        /^what(?:'?s| is)\s+this\s+(?:error|warning|message|notification)[?]?$/i,
         /^what\s+does\s+this\s+(?:mean|say|error\s+mean)[?]?$/i,
+        // "what is this thing on my screen", "what is that on screen"
+        /^what(?:'?s| is)\s+(?:this|that)\b.*\bon\s+(?:my\s+|the\s+)?screen/i,
+        // "there's an error on my screen, what is it"
+        /^(?:there(?:'?s| is)|i\s+(?:see|have|got)|i'?ve\s+got)\s+.*\b(?:error|warning|message|popup|dialog|notification|issue|problem)\b.*\bscreen\b/i,
+        // "tell me what this says/means"
+        /^tell\s+me\s+what\s+(?:this|that|it)\s+(?:says|means|is)/i,
         /^why\s+(?:isn't|is\s*n't|is not|won't|can't)\s+(?:this|it)\s+working[?]?$/i,
-        /^(?:can\s+you\s+)?(?:explain|read)\s+(?:this|what(?:'s| is)\s+on\s+(?:my\s+)?screen)/i,
-        /^what(?:'s| is)\s+(?:wrong|the\s+(?:error|issue|problem))\s+(?:here|with\s+this)[?]?$/i,
+        /^(?:can\s+you\s+)?(?:explain|read)\s+(?:this|what(?:'?s| is)\s+on\s+(?:my\s+)?screen)/i,
+        /^what(?:'?s| is)\s+(?:wrong|the\s+(?:error|issue|problem))\s+(?:here|with\s+this)[?]?$/i,
         /^(?:debug|fix)\s+this$/i,
       ],
       extract: (match) => ({ question: match[0].trim() }),

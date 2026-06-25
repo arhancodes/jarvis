@@ -59,7 +59,7 @@ export class SystemControlModule implements JarvisModule {
     {
       intent: 'volume-get',
       patterns: [
-        /^(?:get\s+|show\s+|check\s+|what(?:'s| is)\s+(?:the\s+)?)volume/i,
+        /^(?:get\s+|show\s+|check\s+|what(?:'?s| is)\s+(?:the\s+)?)volume/i,
         /^volume$/i,
       ],
       extract: () => ({}),
@@ -190,7 +190,7 @@ export class SystemControlModule implements JarvisModule {
       intent: 'wifi-status',
       patterns: [
         /^wi-?fi(?:\s+status)?$/i,
-        /^(?:what(?:'s| is)\s+(?:the\s+)?)?wi-?fi\s+(?:status|network)/i,
+        /^(?:what(?:'?s| is)\s+(?:the\s+)?)?wi-?fi\s+(?:status|network)/i,
         /^(?:am i|are we)\s+connected/i,
       ],
       extract: () => ({}),

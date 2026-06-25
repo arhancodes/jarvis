@@ -18,9 +18,11 @@ export class FileOperationsModule implements JarvisModule {
     {
       intent: 'search',
       patterns: [
-        /^(?:search|find|locate)\s+(?:for\s+)?(?:files?\s+)?(?:named?\s+)?["']?(.+?)["']?$/i,
-        /^(?:where(?:'s| is))\s+(.+)/i,
-        /^(?:look for)\s+(.+)/i,
+        // Local file search — but NOT "search the web" / "find research papers"
+        // (those belong to browser-control / research, reached on fall-through).
+        /^(?:search|find|locate)\s+(?!(?:the\s+web|online|google)\b)(?!(?:me\s+)?(?:some\s+)?(?:research|academic|papers?|articles?|info(?:rmation)?\s+(?:on|about))\b)(?:for\s+)?(?:files?\s+)?(?:named?\s+)?["']?(.+?)["']?$/i,
+        /^(?:where(?:'?s| is))\s+(?:my\s+|the\s+)?(.+)/i,
+        /^(?:look for)\s+(?:the\s+)?file\s+(.+)/i,
       ],
       extract: (match) => ({ query: match[1].trim() }),
     },
@@ -28,7 +30,10 @@ export class FileOperationsModule implements JarvisModule {
       intent: 'open-folder',
       patterns: [
         /^open\s+(?:folder|directory|dir)\s+(.+)/i,
-        /^(?:show|reveal)\s+(?:in\s+)?(?:finder\s+)?(.+)/i,
+        // "open my downloads folder", "open the projects directory"
+        /^open\s+(?:the\s+|my\s+)?(.+?)\s+(?:folder|directory|dir)$/i,
+        /^(?:show|reveal)\s+(?:me\s+)?(?:in\s+finder\s+)?(~?\/\S+)/i,
+        /^reveal\s+(?:in\s+finder\s+)?(.+)/i,
         /^open\s+(~?\/.+)/i,
         /^open\s+(~[^\s]*)/i,
       ],
@@ -63,8 +68,10 @@ export class FileOperationsModule implements JarvisModule {
       intent: 'list-dir',
       patterns: [
         /^ls\s+(.+)/i,
-        /^(?:what(?:'s| is) in)\s+(.+)/i,
-        /^(?:list|show)\s+(?:files?\s+in\s+)?(.+)/i,
+        /^(?:what(?:'?s| is)\s+in)\s+(.+)/i,
+        /^(?:list|show)\s+(?:me\s+)?what(?:'?s| is)\s+(?:in|inside)\s+(.+)/i,
+        /^(?:list|show)\s+(?:me\s+)?(?:the\s+)?(?:files?|contents?)\s+(?:in|of)\s+(.+)/i,
+        /^(?:list|show)\s+(?:the\s+)?(?:contents\s+of\s+)?(~?\/\S+)/i,
       ],
       extract: (match) => ({ path: match[1].trim() }),
     },

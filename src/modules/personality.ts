@@ -25,16 +25,18 @@ export class PersonalityModule implements JarvisModule {
     {
       intent: 'greeting',
       patterns: [
-        // "hi", "hello", "hey", "yo", "sup", with optional trailing words: "bro", "man", "jarvis", "my friend", etc.
-        /^(?:hi|hello|hey|howdy|yo|sup)(?:\s+(?:there|jarvis|bro|man|dude|my\s+(?:friend|guy|man|dude|bro)|buddy))?[!.,]?(?:\s+.*)?$/i,
-        // "what's up", "what is up" — with any trailing words
-        /^what(?:'?s|\s+is)\s+up(?:\s+.*)?$/i,
-        // "what's good", "what's happening", "what's going on"
-        /^what(?:'?s|\s+is)\s+(?:good|happening|going\s+on|new|crackin|poppin|the\s+move)(?:\s+.*)?$/i,
+        // "hi", "hello", "hey", "yo", "sup" + optional address words ONLY.
+        // Bounded to end-of-string so "hey what is the capital" falls through
+        // to the real handler instead of being swallowed as a greeting.
+        /^(?:hi|hello|hey|heya|hiya|howdy|yo|sup)(?:\s+(?:there|jarvis|bro|man|dude|mate|sir|buddy|my\s+(?:friend|guy|man|dude|bro)))*[!.,?]*$/i,
+        // "what's up [bro]" — only a trailing address word, not a question
+        /^what(?:'?s|\s+is)\s+up(?:\s+(?:jarvis|bro|man|dude|mate|sir|buddy|there))?[!.,?]*$/i,
+        // "what's good/happening/going on [bro]"
+        /^what(?:'?s|\s+is)\s+(?:good|happening|going\s+on|new|crackin|poppin|the\s+move)(?:\s+(?:jarvis|bro|man|dude|mate|sir|buddy|there))?[!.,?]*$/i,
         // "good afternoon/evening" — morning is handled by smart-routines
-        /^good\s+(?:afternoon|evening)(?:\s+.*)?$/i,
+        /^good\s+(?:afternoon|evening)(?:\s+(?:jarvis|sir|everyone|to\s+you))?[!.,?]*$/i,
         // "greetings", "salutations"
-        /^(?:greetings|salutations)(?:\s+.*)?$/i,
+        /^(?:greetings|salutations)(?:\s+(?:jarvis|sir|everyone))?[!.,?]*$/i,
       ],
       extract: () => ({}),
     },
@@ -52,7 +54,7 @@ export class PersonalityModule implements JarvisModule {
       intent: 'identity',
       patterns: [
         /^(?:who|what)\s+are\s+you/i,
-        /^what(?:'s| is)\s+your\s+name/i,
+        /^what(?:'?s| is)\s+your\s+name/i,
         /^tell\s+me\s+about\s+yourself/i,
         /^what\s+do\s+you\s+do/i,
       ],
@@ -62,7 +64,7 @@ export class PersonalityModule implements JarvisModule {
       intent: 'creator',
       patterns: [
         /^who\s+(?:made|built|created|wrote|designed|developed)\s+you/i,
-        /^who(?:'s| is)\s+your\s+(?:creator|maker|developer|author|dad|father|boss)/i,
+        /^who(?:'?s| is)\s+your\s+(?:creator|maker|developer|author|dad|father|boss)/i,
         /^who\s+(?:is|are)\s+(?:your\s+)?(?:creator|maker)/i,
       ],
       extract: () => ({}),
@@ -100,11 +102,11 @@ export class PersonalityModule implements JarvisModule {
     {
       intent: 'mood',
       patterns: [
-        /^how\s+are\s+you(?:\s+(?:doing|feeling|today))?(?:\s+.*)?[?!.]?$/i,
-        /^how(?:'s| is)\s+(?:it\s+going|everything|life|things)(?:\s+.*)?[?!.]?$/i,
+        /^how\s+are\s+(?:you|ya)(?:\s+(?:doing|feeling|today|going))?(?:\s+.*)?[?!.]?$/i,
+        /^how(?:'?s| is)\s+(?:it\s+going|everything|life|things)(?:\s+.*)?[?!.]?$/i,
         /^how\s+do\s+you\s+feel[?!.]?$/i,
         /^(?:are\s+you\s+(?:ok|okay|alright|good|well|fine))(?:\s+.*)?[?!.]?$/i,
-        /^you\s+(?:good|alright|ok|okay)[?!.]?$/i,
+        /^you\s+(?:doing\s+|feeling\s+)?(?:good|alright|ok|okay|well)(?:\s+.*)?[?!.]?$/i,
       ],
       extract: () => ({}),
     },
@@ -120,7 +122,7 @@ export class PersonalityModule implements JarvisModule {
     {
       intent: 'time',
       patterns: [
-        /^what(?:'s| is)\s+the\s+time/i,
+        /^what(?:'?s| is)\s+the\s+time/i,
         /^what\s+time\s+is\s+it/i,
         /^(?:current\s+)?time[?]?$/i,
       ],
@@ -129,7 +131,7 @@ export class PersonalityModule implements JarvisModule {
     {
       intent: 'date',
       patterns: [
-        /^what(?:'s| is)\s+(?:the\s+)?(?:today(?:'s)?|current)\s+date/i,
+        /^what(?:'?s| is)\s+(?:the\s+)?(?:today(?:'s)?|current)\s+date/i,
         /^what\s+day\s+is\s+(?:it|today)/i,
         /^(?:today(?:'s)?)\s+date[?]?$/i,
       ],
@@ -141,7 +143,7 @@ export class PersonalityModule implements JarvisModule {
         // Pure arithmetic: "31 x 64", "100 + 50", "12 * 8", "500 / 4", "2^10"
         /^([\d.,]+\s*[×x*+\-−/÷^]\s*[\d.,]+(?:\s*[×x*+\-−/÷^]\s*[\d.,]+)*)[\s?]*$/i,
         // "what is 31 times 64", "calculate 100 + 50", "what's 12 times 8"
-        /^(?:what(?:'s| is)\s+|calculate\s+|compute\s+|solve\s+|how\s+much\s+is\s+)([\d.,]+\s*(?:times|x|×|\*|plus|\+|minus|\-|−|divided\s+by|\/|÷|to\s+the\s+power\s+of|\^)\s*[\d.,]+(?:\s*(?:times|x|×|\*|plus|\+|minus|\-|−|divided\s+by|\/|÷|to\s+the\s+power\s+of|\^)\s*[\d.,]+)*)[\s?]*$/i,
+        /^(?:what(?:'?s| is)\s+|calculate\s+|compute\s+|solve\s+|how\s+much\s+is\s+)([\d.,]+\s*(?:times|x|×|\*|plus|\+|minus|\-|−|divided\s+by|\/|÷|to\s+the\s+power\s+of|\^)\s*[\d.,]+(?:\s*(?:times|x|×|\*|plus|\+|minus|\-|−|divided\s+by|\/|÷|to\s+the\s+power\s+of|\^)\s*[\d.,]+)*)[\s?]*$/i,
       ],
       extract: (match) => ({ expr: match[1] }),
     },

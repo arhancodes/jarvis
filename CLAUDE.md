@@ -210,3 +210,69 @@
 - **types:** `LLMOptions`
 - **const/let:** `DEFAULT_MODEL`, `FAST_MODEL`
 
+
+## Key file: src/modules/deep-research.ts
+- **depends on:** `child_process`, `fs`, `path`, `url`
+
+
+## Key file: .arhan.dev/src/Docs.jsx
+- **depends on:** `react`
+- **classes:** `MyModule`
+
+
+## Key file: .arhan.dev/src/App.jsx
+- **depends on:** `react`
+- **exports (fn):** `App`
+
+
+## Key file: src/voice/voice-assistant.ts
+- **depends on:** `child_process`, `readline`, `fs`, `path`, `url`
+- **classes:** `VoiceAssistant`
+
+
+## Inline summary: src/voice/voice-assistant.ts
+- **depends on:** `child_process`, `readline`, `fs`, `path`, `url`
+- **classes:** `VoiceAssistant`
+
+
+## Key file: src/utils/status-reporter.ts
+- **depends on:** `fs`
+- **exports (fn):** `onStatusUpdate`, `setAIMStatusBroadcast`, `reportBoot`, `reportVoice`, `reportState`, `reportCommand`, `reportShutdown`
+
+
+## Key file: src/utils/whatsapp-baileys.ts
+- **depends on:** `fs`, `pino`
+- **exports (fn):** `startWhatsApp`, `sendWhatsApp`, `recentInbound`, `waStatus`, `isWhatsAppConnected`, `repairWhatsApp`
+- **types:** `type ConnectionState`, `InboundMessage`, `StartOpts`
+
+
+## Key file: menubar/JarvisMenubar.swift
+<!-- Add a one-paragraph summary of what this file exports/contains. -->
+
+## Inline summary: menubar/JarvisMenubar.swift
+<!-- Add a summary here to prevent re-reads. -->
+
+## Key file: src/modules/screen-awareness.ts
+- **depends on:** `os`, `path`, `fs`
+- **exports (fn):** `captureScreenText`, `captureScreenImage`
+- **classes:** `ScreenAwarenessModule`
+
+
+## Inline summary: src/watch/aim-bridge.ts
+- **depends on:** `ws`, `fs`, `path`, `os`, `child_process`, `util`
+- **exports (fn):** `startAIMBridge`, `stopAIMBridge`, `isAIMConnected`, `broadcastStatusViaAIM`
+
+
+## Key file: src/modules/app-launcher.ts
+- **depends on:** `child_process`
+- **classes:** `AppLauncherModule`
+
+
+## Key file: src/modules/timer.ts
+- **classes:** `TimerModule`
+
+
+## Key file: src/modules/research.ts
+- **depends on:** `child_process`, `fs`, `path`, `url`
+- **classes:** `ResearchModule`
+

@@ -11,6 +11,7 @@ export class MediaControlModule implements JarvisModule {
     {
       intent: 'play',
       patterns: [
+        /^(?:play|resume)\s+(?:some\s+)?music$/i,
         /^(?:play|resume)\s+music/i,
         /^(?:play|resume)$/i,
         /^music\s+play/i,
@@ -51,8 +52,8 @@ export class MediaControlModule implements JarvisModule {
     {
       intent: 'now-playing',
       patterns: [
-        /^(?:now playing|what(?:'s| is) playing|current (?:song|track))/i,
-        /^(?:what(?:'s| is) this (?:song|track))/i,
+        /^(?:now playing|what(?:'?s| is) playing|current (?:song|track))/i,
+        /^(?:what(?:'?s| is) this (?:song|track))/i,
         /^(?:song|track)\s*$/i,
         /^np$/i,
       ],
@@ -64,6 +65,8 @@ export class MediaControlModule implements JarvisModule {
       patterns: [
         /^(?:spotify\s+)?play\s+["'](.+?)["']/i,
         /^(?:spotify\s+)?play\s+(.+)/i,
+        // "put on some jazz", "throw on the beatles", "queue up some lofi"
+        /^(?:put\s+on|throw\s+on|queue\s+up)\s+(?:some\s+|the\s+)?(.+)/i,
       ],
       extract: (match) => ({ query: match[1].trim() }),
     },

@@ -1,5 +1,5 @@
 {
-  "lastCheck": "2026-06-14T11:28:26.069Z",
+  "lastCheck": "2026-06-24T11:15:00.950Z",
   "alerts": [
     {
       "time": "2026-03-30T05:31:27.872Z",
@@ -368,6 +368,21 @@
     },
     {
       "time": "2026-05-12T12:18:08.134Z",
+      "type": "critical",
+      "message": "arhan.dev is DOWN and unreachable!"
+    },
+    {
+      "time": "2026-06-24T11:15:00.815Z",
+      "type": "critical",
+      "message": "mytradebuddy.com is DOWN and unreachable!"
+    },
+    {
+      "time": "2026-06-24T11:15:00.870Z",
+      "type": "critical",
+      "message": "rewovenapp.com is DOWN and unreachable!"
+    },
+    {
+      "time": "2026-06-24T11:15:00.909Z",
       "type": "critical",
       "message": "arhan.dev is DOWN and unreachable!"
     }

@@ -514,13 +514,13 @@ export class ConversionsModule implements JarvisModule {
       intent: 'timezone',
       patterns: [
         // "6 PM IST to GST", "6PM IST in GST", "convert 6 PM IST to GST"
-        /^(?:convert\s+|what(?:'s| is)\s+)?(\d{1,2}:\d{2}\s*(?:am|pm)?|\d{1,2}\s*(?:am|pm))\s+([a-z]{2,5})\s+(?:to|in)\s+([a-z]{2,5})$/i,
+        /^(?:convert\s+|what(?:'?s| is)\s+)?(\d{1,2}:\d{2}\s*(?:am|pm)?|\d{1,2}\s*(?:am|pm))\s+([a-z]{2,5})\s+(?:to|in)\s+([a-z]{2,5})$/i,
         // "what is 6 PM IST in GST", "what's 14:00 EST in PST"
-        /^what(?:'s| is)\s+(\d{1,2}:\d{2}\s*(?:am|pm)?|\d{1,2}\s*(?:am|pm))\s+([a-z]{2,5})\s+(?:to|in)\s+([a-z]{2,5})/i,
+        /^what(?:'?s| is)\s+(\d{1,2}:\d{2}\s*(?:am|pm)?|\d{1,2}\s*(?:am|pm))\s+([a-z]{2,5})\s+(?:to|in)\s+([a-z]{2,5})/i,
         // "6 PM India time to Gulf time", "convert 6 PM Indian standard time to Gulf standard time"
-        /^(?:convert\s+|what(?:'s| is)\s+)?(\d{1,2}:\d{2}\s*(?:am|pm)?|\d{1,2}\s*(?:am|pm))\s+(.+?)\s+(?:to|in)\s+(.+?)$/i,
+        /^(?:convert\s+|what(?:'?s| is)\s+)?(\d{1,2}:\d{2}\s*(?:am|pm)?|\d{1,2}\s*(?:am|pm))\s+(.+?)\s+(?:to|in)\s+(.+?)$/i,
         // "time in GST when it's 6 PM IST"
-        /^(?:what\s+)?time\s+in\s+([a-z]{2,5})\s+when\s+(?:it(?:'s| is)\s+)?(\d{1,2}:\d{2}\s*(?:am|pm)?|\d{1,2}\s*(?:am|pm))\s+([a-z]{2,5})$/i,
+        /^(?:what\s+)?time\s+in\s+([a-z]{2,5})\s+when\s+(?:it(?:'?s| is)\s+)?(\d{1,2}:\d{2}\s*(?:am|pm)?|\d{1,2}\s*(?:am|pm))\s+([a-z]{2,5})$/i,
       ],
       extract: (match, raw) => {
         // Handle "time in GST when it's 6 PM IST" — different argument order
@@ -538,9 +538,9 @@ export class ConversionsModule implements JarvisModule {
     {
       intent: 'current-time',
       patterns: [
-        /^what(?:'s| is)?\s+time\s+is\s+it\s+(?:in|at)\s+(?!.*\bwhen\b)(.+?)\??$/i,
-        /^(?:what(?:'s| is)?\s+)?(?:the\s+)?current\s+time\s+(?:in|at)\s+(.+?)\??$/i,
-        /^(?:what(?:'s| is)?\s+)?(?:the\s+)?time\s+(?:in|at)\s+(?!.*\bwhen\b)(.+?)\??$/i,
+        /^what(?:'?s| is)?\s+time\s+is\s+it\s+(?:in|at)\s+(?!.*\bwhen\b)(.+?)\??$/i,
+        /^(?:what(?:'?s| is)?\s+)?(?:the\s+)?current\s+time\s+(?:in|at)\s+(.+?)\??$/i,
+        /^(?:what(?:'?s| is)?\s+)?(?:the\s+)?time\s+(?:in|at)\s+(?!.*\bwhen\b)(.+?)\??$/i,
       ],
       extract: (match) => ({ place: match[1].trim() }),
     },
@@ -549,7 +549,7 @@ export class ConversionsModule implements JarvisModule {
       intent: 'unit',
       patterns: [
         // "10 miles to km", "convert 5 pounds to kg", "100 fahrenheit in celsius"
-        /^(?:convert\s+|what(?:'s| is)\s+)?(\d+(?:\.\d+)?)\s+(.+?)\s+(?:to|in|into)\s+(.+?)$/i,
+        /^(?:convert\s+|what(?:'?s| is)\s+)?(\d+(?:\.\d+)?)\s+(.+?)\s+(?:to|in|into)\s+(.+?)$/i,
         // "how many cups in a gallon", "how many ounces in a cup"
         /^how\s+many\s+(.+?)\s+(?:in|per)\s+(?:a\s+|an?\s+)?(.+?)$/i,
       ],

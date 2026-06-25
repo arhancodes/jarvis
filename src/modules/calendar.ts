@@ -74,11 +74,11 @@ export class CalendarModule implements JarvisModule {
     {
       intent: 'today',
       patterns: [
-        /^(?:what(?:'s| is) )?(?:on )?(?:my )?(?:calendar|schedule|agenda) (?:for )?today$/i,
+        /^(?:what(?:'?s| is) )?(?:on )?(?:my )?(?:calendar|schedule|agenda) (?:for )?today$/i,
         /^(?:today(?:'s)? )?(?:calendar|schedule|events?|agenda)$/i,
-        /^what(?:'s| is|'s) (?:on )?(?:my )?(?:calendar|schedule) (?:today)?$/i,
+        /^what(?:'?s| is) (?:on )?(?:my )?(?:calendar|schedule) (?:today)?$/i,
         /^(?:my )?schedule$/i,
-        /^what(?:'s| is) on (?:my )?calendar$/i,
+        /^what(?:'?s| is) on (?:my )?calendar$/i,
       ],
       extract: () => ({}),
     },
@@ -87,14 +87,14 @@ export class CalendarModule implements JarvisModule {
       patterns: [
         /^(?:upcoming|this week(?:'s)?|next (?:few )?(?:days?|week)) (?:events?|calendar|schedule|meetings?)$/i,
         /^(?:show |list )?upcoming (?:events?|meetings?)$/i,
-        /^(?:what(?:'s| is) )?coming up(?: (?:this|next) week)?$/i,
+        /^(?:what(?:'?s| is) )?coming up(?: (?:this|next) week)?$/i,
       ],
       extract: () => ({}),
     },
     {
       intent: 'next',
       patterns: [
-        /^(?:what(?:'s| is) )?(?:my )?next (?:event|meeting|appointment)$/i,
+        /^(?:what(?:'?s| is) )?(?:my )?next (?:event|meeting|appointment)$/i,
         /^next (?:event|meeting|appointment|on (?:my )?calendar)$/i,
       ],
       extract: () => ({}),

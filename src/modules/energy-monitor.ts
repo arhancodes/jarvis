@@ -40,7 +40,7 @@ export class EnergyMonitorModule implements JarvisModule {
     {
       intent: 'efficiency',
       patterns: [
-        /^(?:show |get |what(?:'s| is) (?:the |my )?)?efficiency\s*(?:score)?$/i,
+        /^(?:show |get |what(?:'?s| is) (?:the |my )?)?efficiency\s*(?:score)?$/i,
         /^(?:how )?efficient/i,
         /^(?:show |get )?efficiency\s*(?:rating|grade|metrics)$/i,
       ],

@@ -711,6 +711,14 @@
       "occurrences": 1,
       "lastSeen": "2026-06-14T10:36:42.232Z",
       "automated": false
+    },
+    {
+      "command": "message mom hi",
+      "hour": 16,
+      "dayOfWeek": 6,
+      "occurrences": 2,
+      "lastSeen": "2026-06-20T12:15:21.775Z",
+      "automated": false
     }
   ],
   "commandLog": [
@@ -1109,7 +1117,15 @@
     {
       "cmd": "message mom hi",
       "time": "2026-06-14T10:36:42.232Z"
+    },
+    {
+      "cmd": "message mom hi",
+      "time": "2026-06-20T12:00:46.369Z"
+    },
+    {
+      "cmd": "message mom hi",
+      "time": "2026-06-20T12:15:21.775Z"
     }
   ],
-  "lastUpdated": "2026-06-14T10:36:42.232Z"
+  "lastUpdated": "2026-06-20T12:15:21.775Z"
 }

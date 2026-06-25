@@ -12,7 +12,7 @@ export class SystemMonitorModule implements JarvisModule {
       intent: 'cpu',
       patterns: [
         /^(?:show |check |get )?cpu(?:\s+usage)?$/i,
-        /^(?:how(?:'s| is) (?:the )?)?cpu$/i,
+        /^(?:how(?:'?s| is) (?:the )?)?cpu$/i,
         /^processor$/i,
       ],
       extract: () => ({}),
@@ -22,6 +22,7 @@ export class SystemMonitorModule implements JarvisModule {
       patterns: [
         /^(?:show |check |get )?(?:memory|mem|ram)(?:\s+usage)?$/i,
         /^(?:how much )?(?:memory|ram)$/i,
+        /^(?:is\s+)?(?:my\s+)?(?:laptop|computer|mac|machine|system)\s+(?:running\s+)?(?:low\s+on|out\s+of|short\s+on)\s+(?:memory|ram)/i,
       ],
       extract: () => ({}),
     },
@@ -38,7 +39,7 @@ export class SystemMonitorModule implements JarvisModule {
       intent: 'battery',
       patterns: [
         /^(?:show |check |get )?battery$/i,
-        /^(?:how(?:'s| is) (?:the )?)?battery$/i,
+        /^(?:how(?:'?s| is) (?:the )?)?battery$/i,
         /^power\s*(?:status)?$/i,
         /^charge$/i,
       ],
@@ -48,7 +49,7 @@ export class SystemMonitorModule implements JarvisModule {
       intent: 'network',
       patterns: [
         /^(?:show |check |get )?network$/i,
-        /^(?:what(?:'s| is) )?(?:my )?ip$/i,
+        /^(?:what(?:'?s| is) )?(?:my )?ip$/i,
         /^(?:show |check )?wifi$/i,
         /^connectivity$/i,
       ],
@@ -59,7 +60,7 @@ export class SystemMonitorModule implements JarvisModule {
       patterns: [
         /^(?:system )?(?:status|info|overview|stats)$/i,
         /^(?:show |give me )?(?:a )?(?:full )?(?:system )?report$/i,
-        /^how(?:'s| is) (?:the )?(?:system|computer|machine)$/i,
+        /^how(?:'?s| is)\s+(?:the\s+)?(?:system|computer|machine|laptop|mac)(?:\s+(?:doing|running|holding\s+up))?[?]?$/i,
       ],
       extract: () => ({}),
     },
