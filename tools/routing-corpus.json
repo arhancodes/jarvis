@@ -67,5 +67,15 @@
   { "input": "text my mom that I'm gonna be late", "expectModule": "whatsapp", "note": "send" },
   { "input": "ping the group chat and let them know I'm running 10 minutes behind", "expectModule": "whatsapp", "note": "not site-monitor" },
   { "input": "email my boss I won't make it in today", "expectModule": "email", "note": "send" },
-  { "input": "can you send an email to Sarah about the meeting tomorrow", "expectModule": "email" }
+  { "input": "can you send an email to Sarah about the meeting tomorrow", "expectModule": "email" },
+
+  { "input": "how's my recovery", "expectModule": "whoop", "expectAction": "recovery" },
+  { "input": "what's my recovery today", "expectModule": "whoop", "expectAction": "recovery" },
+  { "input": "how recovered am I", "expectModule": "whoop", "expectAction": "recovery" },
+  { "input": "how did I sleep", "expectModule": "whoop", "expectAction": "sleep" },
+  { "input": "what's my sleep score", "expectModule": "whoop", "expectAction": "sleep" },
+  { "input": "what's my strain", "expectModule": "whoop", "expectAction": "strain" },
+  { "input": "what's my strain today", "expectModule": "whoop", "expectAction": "strain" },
+  { "input": "should I train today", "expectModule": "whoop", "expectAction": "should-train" },
+  { "input": "how's my body today", "expectModule": "whoop", "expectAction": "status" }
 ]

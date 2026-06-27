@@ -43,7 +43,8 @@ export type ModuleName =
   | 'data-connectors'
   | 'deep-research'
   | 'sandbox-runner'
-  | 'energy-monitor';
+  | 'energy-monitor'
+  | 'whoop';
 
 export interface ParsedCommand {
   module: ModuleName;

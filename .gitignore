@@ -29,6 +29,7 @@ watch/JarvisWatch/*.xcodeproj/xcuserdata/
 # Menubar binaries (compiled locally)
 menubar/jarvis-menubar
 menubar/JarvisMenubar
+menubar/jarvis-pill
 
 # Miscellaneous
 plan.md
@@ -38,3 +39,4 @@ plan.md
 # Rust build artifacts
 rust-sidecar/target/
 config/whatsapp-contacts.json
+config/whoop.json

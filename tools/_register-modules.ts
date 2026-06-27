@@ -48,6 +48,7 @@ import { MorningDigestModule } from '../src/modules/morning-digest.js';
 import DataConnectorsModule from '../src/modules/data-connectors.js';
 import { EnergyMonitorModule } from '../src/modules/energy-monitor.js';
 import { SandboxRunnerModule } from '../src/modules/sandbox-runner.js';
+import { WhoopModule } from '../src/modules/whoop.js';
 
 registry.register(new AppLauncherModule());
 registry.register(new ScriptRunnerModule());
@@ -65,6 +66,7 @@ registry.register(new PersonalityModule());
 registry.register(new ScreenAwarenessModule());
 registry.register(new ResearchModule());
 registry.register(new BrowserControlModule());
+registry.register(new WhoopModule());
 registry.register(new AIChatModule());
 registry.register(new SmartAssistModule());
 registry.register(new WeatherNewsModule());

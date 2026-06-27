@@ -22,6 +22,8 @@
 import { WebSocketServer, WebSocket } from 'ws';
 import { createServer, Server } from 'http';
 import { conversationEngine } from '../core/conversation-engine.js';
+import { parse } from '../core/parser.js';
+import { execute } from '../core/executor.js';
 import { readFileSync, existsSync, unlinkSync, writeFileSync } from 'fs';
 import { join } from 'path';
 import { tmpdir } from 'os';
@@ -227,6 +229,37 @@ async function handleCommand(ws: WebSocket, text: string, requestId: string, noA
     sendJSON(client, { type: 'status', state: 'processing', lastCommand: text });
   }
 
+  // ── Fast path: deterministic module commands (WHOOP recovery, battery,
+  // timers, conversions, weather…) route straight through parse()+execute()
+  // — no LLM round-trip. ai-chat / unmatched fall through to the conversation
+  // engine below (which streams general answers token-by-token to the client).
+  try {
+    const parsed = await parse(text);
+    if (parsed && parsed.module !== 'ai-chat') {
+      const result = await execute(parsed);
+      const reply = String(result.voiceMessage || result.message || (result.success ? 'Done, sir.' : 'That didn’t work, sir.')).trim();
+      if (ws.readyState === WebSocket.OPEN) sendJSON(ws, { type: 'token', text: reply });
+
+      if (!noAudio || playOnMac) {
+        for (const client of activeClients) sendJSON(client, { type: 'status', state: 'speaking' });
+        for (const sentence of reply.split(/(?<=[.!?])\s+/)) {
+          const clean = sentence.replace(/\[.*?\]/g, '').replace(/\bjarvis\b[,.]?\s*/gi, '').trim();
+          if (!clean) continue;
+          if (playOnMac) await playAudioOnMac(clean);
+          else {
+            const audioBuf = await generateTTSAudio(clean);
+            if (audioBuf && ws.readyState === WebSocket.OPEN) sendJSON(ws, { type: 'audio', data: audioBuf.toString('base64') });
+          }
+        }
+        if (!playOnMac) sendJSON(ws, { type: 'audioEnd' });
+      }
+      for (const client of activeClients) sendJSON(client, { type: 'status', state: 'idle' });
+      return;
+    }
+  } catch (err) {
+    log.debug('Fast-path parse/execute failed; falling back to conversation engine', err);
+  }
+
   const sentenceQueue: string[] = [];
   let buffer = '';
   let streamDone = false;
@@ -355,6 +388,20 @@ export function startWatchServer(): { port: number } | null {
       ws.on('error', () => {
         activeClients.delete(ws);
       });
+    });
+
+    // listen() errors (e.g. EADDRINUSE when another JARVIS is already running)
+    // arrive as an async 'error' event — without this they'd crash the whole
+    // process. Warn and continue headless instead.
+    httpServer.on('error', (err: NodeJS.ErrnoException) => {
+      if (err.code === 'EADDRINUSE') {
+        console.log(`  [watch] Port ${config.port} already in use — another JARVIS is likely running. Skipping watch server.`);
+      } else {
+        console.log(`  [watch] Server error: ${err.message}`);
+      }
+      try { httpServer?.close(); } catch { /* ignore */ }
+      httpServer = null;
+      wss = null;
     });
 
     httpServer.listen(config.port, '0.0.0.0', () => {

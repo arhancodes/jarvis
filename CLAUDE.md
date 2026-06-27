@@ -276,3 +276,18 @@
 - **depends on:** `child_process`, `fs`, `path`, `url`
 - **classes:** `ResearchModule`
 
+
+## Key file: src/watch/ws-server.ts
+- **depends on:** `ws`, `http`, `fs`, `path`, `os`, `child_process`, `util`
+- **exports (fn):** `startWatchServer`, `stopWatchServer`, `getWatchClientCount`
+
+
+## Inline summary: src/watch/ws-server.ts
+- **depends on:** `ws`, `http`, `fs`, `path`, `os`, `child_process`, `util`
+- **exports (fn):** `startWatchServer`, `stopWatchServer`, `getWatchClientCount`
+
+
+## Inline summary: .arhan.dev/src/Docs.jsx
+- **depends on:** `react`
+- **classes:** `MyModule`
+

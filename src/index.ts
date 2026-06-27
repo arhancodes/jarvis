@@ -73,6 +73,7 @@ const log = createLogger('jarvis');
 
 import { EnergyMonitorModule } from './modules/energy-monitor.js';
 import { SandboxRunnerModule } from './modules/sandbox-runner.js';
+import { WhoopModule } from './modules/whoop.js';
 import { discoverGeneratedModules, bootModules } from './core/registry.js';
 import { loadPluginsFromConfig } from './core/plugin-loader.js';
 import { startSidecar, stopSidecar } from './utils/rust-bridge.js';
@@ -369,6 +370,7 @@ export function boot(): void {
   registry.register(new ScreenAwarenessModule());
   registry.register(new ResearchModule());
   registry.register(new BrowserControlModule());
+  registry.register(new WhoopModule());
   registry.register(new AIChatModule());
   registry.register(new SmartAssistModule());
   registry.register(new WeatherNewsModule());
