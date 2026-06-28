@@ -203,6 +203,26 @@ export async function llmVision(
   return claudeStreamChat([{ role: 'user', content }], systemPrompt, () => {}, opts);
 }
 
+let lastPrewarm = 0;
+/**
+ * Warm the keep-alive TLS socket to the Claude API. Called on wake-word
+ * detection so the connection is hot by the time the user finishes speaking,
+ * trimming time-to-first-token. Fire-and-forget, debounced, free (no tokens).
+ */
+export function prewarmLLM(): void {
+  if (!config.claudeApiKey) return;
+  const now = Date.now();
+  if (now - lastPrewarm < 30_000) return;
+  lastPrewarm = now;
+  undiciFetch('https://api.anthropic.com/v1/models?limit=1', {
+    method: 'GET',
+    headers: { 'x-api-key': config.claudeApiKey, 'anthropic-version': '2023-06-01' },
+    dispatcher: keepAliveAgent,
+  })
+    .then((r) => { void r.body?.cancel(); })
+    .catch(() => {});
+}
+
 export async function isLLMAvailable(): Promise<boolean> {
   return !!config.claudeApiKey;
 }

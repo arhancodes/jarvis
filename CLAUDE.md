@@ -291,3 +291,7 @@
 - **depends on:** `react`
 - **classes:** `MyModule`
 
+
+## Inline summary: src/core/parser.ts
+- **exports (fn):** `invalidateAliasCache`, `learnRoute`, `levenshtein`, `splitChainedCommands`, `parse`
+

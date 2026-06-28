@@ -1,13 +1,8 @@
 // ── JARVIS Pill — "Golden Gate" Siri-style access surface ──
 //
-// STATUS: PARKED (WIP, 2026-06-27). Working + liked; paused for later.
-// Launcher (start-pill.sh) is guarded so it won't run by accident.
-// To resume: remove the guard lines in start-pill.sh, then `bash menubar/start-pill.sh`.
-// Next ideas: mic button (voice into the pill), scrollable chat history, spoken replies.
-//
-// A compact, draggable, Liquid-Glass capsule summoned with a global hotkey
-// (default ⌥-Space). Type a query; it expands into a streaming answer card.
-// Talks to the running JARVIS over the watch WebSocket (ws://127.0.0.1:5225):
+// A compact, draggable capsule summoned with a global hotkey (default ⌥-Space).
+// Type a query; it expands into a streaming answer card. Talks to the running
+// JARVIS over the watch WebSocket (ws://127.0.0.1:5225):
 //   send  { "type":"command", "text":"...", "noAudio":true }
 //   recv  { "type":"token", "text":"..." } / { "type":"status", "state":"..." }
 //
@@ -37,8 +32,7 @@ final class JarvisLink {
         task = t
         t.resume()
         receive()
-        // The server sends an initial {status:idle} on connect; treat the first
-        // successful receive as "connected".
+        ping()
     }
 
     private func setConnected(_ v: Bool) {
@@ -54,6 +48,13 @@ final class JarvisLink {
         let w = DispatchWorkItem { [weak self] in self?.connect() }
         reconnectWork = w
         DispatchQueue.main.asyncAfter(deadline: .now() + 2.0, execute: w)
+    }
+
+    private func ping() {
+        task?.sendPing { [weak self] err in
+            if err != nil { return }
+            DispatchQueue.main.asyncAfter(deadline: .now() + 20) { self?.ping() }
+        }
     }
 
     private func receive() {
@@ -94,60 +95,70 @@ final class JarvisLink {
     }
 }
 
-// MARK: - Glass background + animated glow border
+// MARK: - Glass card: frosted material + opaque-ish tint + animated glow border
 
 final class GlassCard: NSView {
     private let effect = NSVisualEffectView()
+    private let tint = NSView()
     private var phase: CGFloat = 0
     private var timer: Timer?
-    var active = false { didSet { if active { startGlow() } } }
+
+    var active = false {
+        didSet {
+            if active { startGlow() } else { stopGlow() }
+        }
+    }
 
     override init(frame frameRect: NSRect) {
         super.init(frame: frameRect)
         wantsLayer = true
-        layer?.cornerRadius = 20
+        layer?.cornerRadius = 22
         layer?.masksToBounds = true
+        layer?.borderWidth = 1
+        layer?.borderColor = NSColor(white: 1, alpha: 0.14).cgColor
 
-        effect.material = .hudWindow          // frosted "Liquid Glass"
+        effect.material = .hudWindow
         effect.blendingMode = .behindWindow
         effect.state = .active
-        effect.wantsLayer = true
-        effect.layer?.cornerRadius = 20
-        effect.layer?.masksToBounds = true
-        effect.autoresizingMask = [.width, .height]
-        effect.frame = bounds
-        addSubview(effect, positioned: .below, relativeTo: nil)
+        effect.translatesAutoresizingMaskIntoConstraints = false
+        addSubview(effect)
+
+        // Opaque-ish tint so the blurred desktop doesn't bleed through as a
+        // muddy wallpaper-coloured blob — gives a clean dark glass surface.
+        tint.wantsLayer = true
+        tint.layer?.backgroundColor = NSColor(calibratedRed: 0.08, green: 0.08, blue: 0.10, alpha: 0.62).cgColor
+        tint.translatesAutoresizingMaskIntoConstraints = false
+        addSubview(tint)
+
+        NSLayoutConstraint.activate([
+            effect.leadingAnchor.constraint(equalTo: leadingAnchor),
+            effect.trailingAnchor.constraint(equalTo: trailingAnchor),
+            effect.topAnchor.constraint(equalTo: topAnchor),
+            effect.bottomAnchor.constraint(equalTo: bottomAnchor),
+            tint.leadingAnchor.constraint(equalTo: leadingAnchor),
+            tint.trailingAnchor.constraint(equalTo: trailingAnchor),
+            tint.topAnchor.constraint(equalTo: topAnchor),
+            tint.bottomAnchor.constraint(equalTo: bottomAnchor),
+        ])
     }
     required init?(coder: NSCoder) { fatalError() }
 
     private func startGlow() {
-        timer?.invalidate()
+        if timer != nil { return }
         timer = Timer.scheduledTimer(withTimeInterval: 1.0 / 30.0, repeats: true) { [weak self] _ in
             guard let self = self else { return }
-            self.phase += 0.03
-            self.needsDisplay = true
+            self.phase += 0.045
+            // Gentle Siri-ish hue band: blue -> indigo -> violet -> pink.
+            let hue = 0.55 + (sin(self.phase) * 0.5 + 0.5) * 0.18
+            let c = NSColor(hue: hue.truncatingRemainder(dividingBy: 1.0), saturation: 0.85, brightness: 1.0, alpha: 0.95)
+            self.layer?.borderColor = c.cgColor
+            self.layer?.borderWidth = 2
         }
     }
-    func stopGlow() { timer?.invalidate(); timer = nil; needsDisplay = true }
-
-    override func draw(_ dirtyRect: NSRect) {
-        super.draw(dirtyRect)
-        let inset: CGFloat = 1.0
-        let r = bounds.insetBy(dx: inset, dy: inset)
-        let path = NSBezierPath(roundedRect: r, xRadius: 19, yRadius: 19)
-        path.lineWidth = active ? 2.2 : 1.0
-
-        if active {
-            // Cycle through Siri-ish hues while JARVIS works: blue→purple→pink→amber
-            let hue = (sin(phase) * 0.5 + 0.5)            // 0..1
-            let mapped = 0.55 + hue * 0.35                // bias toward blue/purple/pink
-            let c = NSColor(hue: mapped.truncatingRemainder(dividingBy: 1.0),
-                            saturation: 0.85, brightness: 1.0, alpha: 0.9)
-            c.setStroke()
-        } else {
-            NSColor(white: 1.0, alpha: 0.16).setStroke()
-        }
-        path.stroke()
+    private func stopGlow() {
+        timer?.invalidate(); timer = nil
+        layer?.borderColor = NSColor(white: 1, alpha: 0.14).cgColor
+        layer?.borderWidth = 1
     }
 }
 
@@ -166,15 +177,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSTextFieldDelegate {
     private var field: NSTextField!
     private var icon: NSImageView!
     private var statusDot: NSView!
+    private var divider: NSBox!
     private var answerScroll: NSScrollView!
     private var answerView: NSTextView!
+    private var answerHeight: NSLayoutConstraint!
     private let link = JarvisLink()
     private var hotKeyRef: EventHotKeyRef?
     private var clickMonitor: Any?
 
-    private let pillW: CGFloat = 640
-    private let collapsedH: CGFloat = 66
-    private let expandedH: CGFloat = 420
+    private let pillW: CGFloat = 660
+    private let collapsedH: CGFloat = 62
+    private let expandedH: CGFloat = 380
     private var expanded = false
     private var streaming = false
 
@@ -187,7 +200,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSTextFieldDelegate {
         link.onStatus = { [weak self] s in self?.onStatus(s) }
         link.onConn = { [weak self] c in self?.onConn(c) }
         link.connect()
-        // Show once on launch so the look is immediately visible.
         showPill()
     }
 
@@ -195,11 +207,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSTextFieldDelegate {
     private func buildPanel() {
         let screen = NSScreen.main ?? NSScreen.screens[0]
         let sf = screen.frame
-        let x = sf.midX - pillW / 2
-        let y = sf.maxY - 200
-        panel = PillPanel(contentRect: NSRect(x: x, y: y, width: pillW, height: collapsedH),
-                          styleMask: [.borderless, .nonactivatingPanel],
-                          backing: .buffered, defer: false)
+        panel = PillPanel(
+            contentRect: NSRect(x: sf.midX - pillW / 2, y: sf.maxY - 200, width: pillW, height: collapsedH),
+            styleMask: [.borderless, .nonactivatingPanel], backing: .buffered, defer: false)
+        panel.appearance = NSAppearance(named: .darkAqua)   // consistent dark glass in any system theme
         panel.isFloatingPanel = true
         panel.level = .modalPanel
         panel.isOpaque = false
@@ -213,78 +224,111 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSTextFieldDelegate {
         card.autoresizingMask = [.width, .height]
         panel.contentView = card
 
-        // Left icon (sparkles = AI)
-        icon = NSImageView(frame: NSRect(x: 22, y: collapsedH/2 - 13, width: 26, height: 26))
-        icon.autoresizingMask = [.maxXMargin, .minYMargin]
+        let cream = NSColor(calibratedRed: 0.96, green: 0.94, blue: 0.90, alpha: 1.0)
+
+        icon = NSImageView()
+        icon.translatesAutoresizingMaskIntoConstraints = false
         if let img = NSImage(systemSymbolName: "sparkles", accessibilityDescription: "JARVIS") {
-            let cfg = NSImage.SymbolConfiguration(pointSize: 20, weight: .medium)
-            icon.image = img.withSymbolConfiguration(cfg)
+            icon.image = img.withSymbolConfiguration(NSImage.SymbolConfiguration(pointSize: 19, weight: .medium))
         }
-        icon.contentTintColor = NSColor(calibratedRed: 1.0, green: 0.75, blue: 0.3, alpha: 1.0)
+        icon.contentTintColor = .white
         card.addSubview(icon)
 
-        // Text field
-        field = NSTextField(frame: NSRect(x: 60, y: collapsedH/2 - 18, width: pillW - 120, height: 36))
-        field.autoresizingMask = [.width, .minYMargin]
+        field = NSTextField()
+        field.translatesAutoresizingMaskIntoConstraints = false
         field.isBordered = false
         field.drawsBackground = false
         field.focusRingType = .none
-        field.font = NSFont.systemFont(ofSize: 22, weight: .regular)
-        field.textColor = .white
-        field.placeholderAttributedString = NSAttributedString(
-            string: "Ask JARVIS…",
-            attributes: [.foregroundColor: NSColor(white: 1.0, alpha: 0.45),
-                         .font: NSFont.systemFont(ofSize: 22, weight: .regular)])
+        field.font = NSFont.systemFont(ofSize: 21, weight: .regular)
+        field.textColor = cream
+        field.placeholderString = ""   // no "Ask JARVIS" label — clean bar
         field.delegate = self
         field.cell?.usesSingleLineMode = true
         field.cell?.wraps = false
         field.cell?.isScrollable = true
         card.addSubview(field)
 
-        // Connection dot (right)
-        statusDot = NSView(frame: NSRect(x: pillW - 34, y: collapsedH/2 - 4, width: 8, height: 8))
-        statusDot.autoresizingMask = [.minXMargin, .minYMargin]
+        statusDot = NSView()
+        statusDot.translatesAutoresizingMaskIntoConstraints = false
         statusDot.wantsLayer = true
         statusDot.layer?.cornerRadius = 4
         statusDot.layer?.backgroundColor = NSColor.systemRed.cgColor
         card.addSubview(statusDot)
 
-        // Answer area (hidden until expanded)
-        answerScroll = NSScrollView(frame: NSRect(x: 18, y: 16, width: pillW - 36, height: expandedH - collapsedH - 16))
-        answerScroll.autoresizingMask = [.width, .height]
-        answerScroll.hasVerticalScroller = true
+        divider = NSBox()
+        divider.boxType = .separator
+        divider.translatesAutoresizingMaskIntoConstraints = false
+        divider.isHidden = true
+        card.addSubview(divider)
+
+        answerScroll = NSScrollView()
+        answerScroll.translatesAutoresizingMaskIntoConstraints = false
         answerScroll.drawsBackground = false
+        answerScroll.hasVerticalScroller = true
         answerScroll.borderType = .noBorder
-        answerView = NSTextView(frame: answerScroll.bounds)
+        answerScroll.isHidden = true
+
+        answerView = NSTextView()
         answerView.isEditable = false
         answerView.isSelectable = true
         answerView.drawsBackground = false
-        answerView.textColor = NSColor(white: 1.0, alpha: 0.92)
+        answerView.textColor = NSColor(white: 1, alpha: 0.92)
         answerView.font = NSFont.systemFont(ofSize: 15)
         answerView.textContainerInset = NSSize(width: 6, height: 8)
+        // Correct NSTextView-in-scrollview setup so text actually lays out.
+        answerView.minSize = NSSize(width: 0, height: 0)
+        answerView.maxSize = NSSize(width: CGFloat.greatestFiniteMagnitude, height: CGFloat.greatestFiniteMagnitude)
+        answerView.isVerticallyResizable = true
+        answerView.isHorizontallyResizable = false
+        answerView.autoresizingMask = [.width]
+        answerView.textContainer?.widthTracksTextView = true
         answerScroll.documentView = answerView
-        answerScroll.isHidden = true
         card.addSubview(answerScroll)
+
+        answerHeight = answerScroll.heightAnchor.constraint(equalToConstant: 0)
+
+        NSLayoutConstraint.activate([
+            icon.leadingAnchor.constraint(equalTo: card.leadingAnchor, constant: 22),
+            icon.topAnchor.constraint(equalTo: card.topAnchor, constant: 18),
+            icon.widthAnchor.constraint(equalToConstant: 26),
+            icon.heightAnchor.constraint(equalToConstant: 26),
+
+            statusDot.trailingAnchor.constraint(equalTo: card.trailingAnchor, constant: -22),
+            statusDot.centerYAnchor.constraint(equalTo: icon.centerYAnchor),
+            statusDot.widthAnchor.constraint(equalToConstant: 8),
+            statusDot.heightAnchor.constraint(equalToConstant: 8),
+
+            field.leadingAnchor.constraint(equalTo: icon.trailingAnchor, constant: 12),
+            field.trailingAnchor.constraint(equalTo: statusDot.leadingAnchor, constant: -12),
+            field.centerYAnchor.constraint(equalTo: icon.centerYAnchor),
+
+            divider.leadingAnchor.constraint(equalTo: card.leadingAnchor, constant: 18),
+            divider.trailingAnchor.constraint(equalTo: card.trailingAnchor, constant: -18),
+            divider.topAnchor.constraint(equalTo: icon.bottomAnchor, constant: 14),
+
+            answerScroll.leadingAnchor.constraint(equalTo: card.leadingAnchor, constant: 16),
+            answerScroll.trailingAnchor.constraint(equalTo: card.trailingAnchor, constant: -16),
+            answerScroll.topAnchor.constraint(equalTo: divider.bottomAnchor, constant: 8),
+            answerHeight,
+        ])
     }
 
     // MARK: hotkey (⌥-Space)
     private func registerHotKey() {
-        var spec = EventTypeSpec(eventClass: OSType(kEventClassKeyboard),
-                                 eventKind: UInt32(kEventHotKeyPressed))
+        var spec = EventTypeSpec(eventClass: OSType(kEventClassKeyboard), eventKind: UInt32(kEventHotKeyPressed))
         InstallEventHandler(GetApplicationEventTarget(), { (_, _, _) -> OSStatus in
             DispatchQueue.main.async { gApp?.togglePill() }
             return noErr
         }, 1, &spec, nil, nil)
-
         let id = EventHotKeyID(signature: OSType(0x4A505431) /* 'JPT1' */, id: 1)
-        RegisterEventHotKey(UInt32(kVK_Space), UInt32(optionKey),
-                            id, GetApplicationEventTarget(), 0, &hotKeyRef)
+        RegisterEventHotKey(UInt32(kVK_Space), UInt32(optionKey), id, GetApplicationEventTarget(), 0, &hotKeyRef)
     }
 
-    // MARK: show/hide
+    // MARK: show / hide
     func togglePill() { panel.isVisible ? hidePill() : showPill() }
 
     func showPill() {
+        collapse()
         positionTopCenter()
         NSApp.activate(ignoringOtherApps: true)
         panel.makeKeyAndOrderFront(nil)
@@ -295,16 +339,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSTextFieldDelegate {
     func hidePill() {
         removeClickMonitor()
         panel.orderOut(nil)
-        collapse()
         field.stringValue = ""
+        collapse()
     }
 
     private func positionTopCenter() {
         let screen = NSScreen.main ?? NSScreen.screens[0]
         let sf = screen.frame
         let h = panel.frame.height
-        panel.setFrame(NSRect(x: sf.midX - pillW / 2, y: sf.maxY - 200 - (h - collapsedH),
-                              width: pillW, height: h), display: true)
+        panel.setFrame(NSRect(x: sf.midX - pillW / 2, y: sf.maxY - 200 - (h - collapsedH), width: pillW, height: h), display: true)
     }
 
     private func installClickMonitor() {
@@ -320,23 +363,30 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSTextFieldDelegate {
     private func expand() {
         guard !expanded else { return }
         expanded = true
+        divider.isHidden = false
         answerScroll.isHidden = false
-        animateHeight(to: expandedH)
+        answerHeight.constant = expandedH - collapsedH - 24
+        setWindowHeight(expandedH, animate: true)
     }
     private func collapse() {
         expanded = false
+        divider.isHidden = true
         answerScroll.isHidden = true
         answerView.string = ""
-        let f = panel.frame
-        panel.setFrame(NSRect(x: f.minX, y: f.maxY - collapsedH, width: pillW, height: collapsedH), display: true)
+        answerHeight.constant = 0
+        setWindowHeight(collapsedH, animate: false)
     }
-    private func animateHeight(to h: CGFloat) {
+    private func setWindowHeight(_ h: CGFloat, animate: Bool) {
         let f = panel.frame
         let newFrame = NSRect(x: f.minX, y: f.maxY - h, width: pillW, height: h)
-        NSAnimationContext.runAnimationGroup { ctx in
-            ctx.duration = 0.22
-            ctx.timingFunction = CAMediaTimingFunction(name: .easeOut)
-            panel.animator().setFrame(newFrame, display: true)
+        if animate {
+            NSAnimationContext.runAnimationGroup { ctx in
+                ctx.duration = 0.2
+                ctx.timingFunction = CAMediaTimingFunction(name: .easeOut)
+                panel.animator().setFrame(newFrame, display: true)
+            }
+        } else {
+            panel.setFrame(newFrame, display: true)
         }
     }
 
@@ -344,12 +394,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSTextFieldDelegate {
     private func submit() {
         let q = field.stringValue.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !q.isEmpty else { return }
-        guard link.connected else {
-            expand(); answerView.string = "JARVIS isn't running. Start it, then try again."
-            return
-        }
         expand()
         answerView.string = ""
+        if !link.connected {
+            answerView.string = "JARVIS isn’t running. Start it (npm run dev), then try again."
+            return
+        }
         streaming = true
         card.active = true
         link.send(q)
@@ -358,17 +408,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSTextFieldDelegate {
     private func appendToken(_ t: String) {
         answerView.textStorage?.append(NSAttributedString(
             string: t,
-            attributes: [.foregroundColor: NSColor(white: 1.0, alpha: 0.92),
+            attributes: [.foregroundColor: NSColor(white: 1, alpha: 0.92),
                          .font: NSFont.systemFont(ofSize: 15)]))
         answerView.scrollToEndOfDocument(nil)
     }
 
     private func onStatus(_ s: String) {
         switch s {
-        case "processing", "speaking", "activated":
-            card.active = true
-        case "idle":
-            if streaming { streaming = false; card.active = false; card.stopGlow() }
+        case "processing", "speaking", "activated": card.active = true
+        case "idle": if streaming { streaming = false; card.active = false }
         default: break
         }
     }

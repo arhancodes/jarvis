@@ -4,6 +4,7 @@ import { execSync } from 'child_process';
 import { readFileSync, writeFileSync, existsSync } from 'fs';
 import { configPath } from '../utils/config.js';
 import { createLogger } from '../utils/logger.js';
+import { isWhoopConfigured, getRecovery, getSleep, getStrain } from '../utils/whoop.js';
 
 const log = createLogger('morning-digest');
 const CONFIG_PATH = configPath('morning-digest.json');
@@ -20,6 +21,7 @@ interface DigestConfig {
 }
 
 interface BriefingData {
+  whoop?: string;
   weather?: string;
   calendar?: string;
   email?: string;
@@ -30,10 +32,10 @@ interface BriefingData {
 
 function loadConfig(): DigestConfig {
   const defaults: DigestConfig = {
-    sections: ['weather', 'calendar', 'email', 'news', 'system', 'insights'],
+    sections: ['whoop', 'weather', 'calendar', 'email', 'news', 'system', 'insights'],
     location: 'auto',
     autoTime: null,
-    quickSections: ['weather', 'calendar', 'email'],
+    quickSections: ['whoop', 'weather', 'calendar', 'email'],
   };
   try {
     if (existsSync(CONFIG_PATH)) {
@@ -249,6 +251,30 @@ async function getLearningInsights(): Promise<string> {
   }
 }
 
+// WHOOP recovery / sleep / strain — the proactive body briefing.
+async function getWhoopSummary(): Promise<string> {
+  if (!isWhoopConfigured()) return '';
+  try {
+    const [r, s, st] = await Promise.all([
+      getRecovery().catch(() => null),
+      getSleep().catch(() => null),
+      getStrain().catch(() => null),
+    ]);
+    const parts: string[] = [];
+    if (r) parts.push(`Recovery ${r.recovery}%${r.hrv != null ? ` (HRV ${r.hrv}ms)` : ''}`);
+    if (s && s.performance != null) parts.push(`slept ${s.hours != null ? `${s.hours}h ` : ''}at ${s.performance}% performance`);
+    if (st && st.strain != null) parts.push(`yesterday's strain ${st.strain}`);
+    if (!parts.length) return 'No WHOOP data scored yet today.';
+    let line = parts.join(', ') + '.';
+    if (r) {
+      line += r.recovery >= 67 ? " You're well recovered, good to push hard today."
+            : r.recovery >= 34 ? ' Recovery is moderate, keep it sensible.'
+            : ' Recovery is low, take it easy today.';
+    }
+    return line;
+  } catch { return ''; }
+}
+
 // ── Briefing Compiler ──
 
 async function gatherBriefing(sections: string[], location: string): Promise<BriefingData> {
@@ -256,6 +282,9 @@ async function gatherBriefing(sections: string[], location: string): Promise<Bri
 
   const tasks: Promise<void>[] = [];
 
+  if (sections.includes('whoop')) {
+    tasks.push(getWhoopSummary().then(w => { if (w) data.whoop = w; }).catch(() => {}));
+  }
   if (sections.includes('weather')) {
     tasks.push(getWeather(location).then(w => { data.weather = w; }).catch(e => { data.weather = (e as Error).message; }));
   }
@@ -282,6 +311,7 @@ async function gatherBriefing(sections: string[], location: string): Promise<Bri
 async function compileBriefing(data: BriefingData, quick: boolean): Promise<string> {
   const dataParts: string[] = [];
 
+  if (data.whoop) dataParts.push(`Body (WHOOP): ${data.whoop}`);
   if (data.weather) dataParts.push(`Weather: ${data.weather}`);
   if (data.calendar) dataParts.push(`Calendar: ${data.calendar}`);
   if (data.email) dataParts.push(`Email: ${data.email}`);

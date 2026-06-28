@@ -14,6 +14,45 @@ export interface VoiceInputProvider {
   stop(): void;
 }
 
+// Words/phrases JARVIS uses that generic speech recognition tends to mangle.
+// Fed to SFSpeechRecognizer as contextualStrings so it *prefers* these tokens
+// — fixes the "he didn't catch that" class at the source, before the parser.
+const STT_VOCAB = [
+  'JARVIS', 'WHOOP', 'recovery', 'strain', 'HRV', 'resting heart rate',
+  "how's my recovery", 'how did I sleep', "what's my strain", 'should I train today',
+  'Spotify', 'WhatsApp', 'HomeKit', 'Gmail', 'Calendar', 'GitHub', 'Claude',
+  'Apple Watch', 'iPhone', 'Safari', 'Chrome', 'Xcode', 'Finder',
+  'battery', 'brightness', 'volume', 'dark mode', 'do not disturb', 'screenshot',
+  'clipboard', 'timer', 'reminder', 'alarm', 'stopwatch',
+  'weather', 'forecast', 'news', 'headlines',
+  'research', 'deep research', 'summarize', 'translate',
+  'screen', 'read my screen', "what's on my screen", 'kill port', 'process',
+  'mute', 'unmute', 'lock screen', 'sleep', 'wake word',
+  'morning digest', 'good morning', 'smart home', 'lights', 'thermostat',
+  'play', 'pause', 'next track', 'previous track', 'shuffle', 'playlist',
+];
+export const STT_VOCAB_SWIFT = '[' + STT_VOCAB.map((w) => '"' + w.replace(/"/g, '\\"') + '"').join(', ') + ']';
+
+// High-confidence fixes for the way generic STT mangles JARVIS's proper nouns.
+// Applied to the recognized transcript before parsing. Word-boundary + case-
+// insensitive so they don't fire mid-word.
+const STT_CORRECTIONS: Array<[RegExp, string]> = [
+  [/\bwhat'?s\s*app\b/gi, 'whatsapp'],
+  [/\b(?:hoops?|woops?|who\s*op)\b/gi, 'whoop'],
+  [/\bspot(?:ty|i)\s*fy\b/gi, 'spotify'],
+  [/\bhome\s*kit\b/gi, 'homekit'],
+  [/\bget\s*hub\b/gi, 'github'],
+  [/\bx\s*code\b/gi, 'xcode'],
+  [/\bh\s*r\s*v\b/gi, 'hrv'],
+];
+
+/** Normalize common speech-recognition mis-hearings of JARVIS's vocabulary. */
+export function correctTranscript(text: string): string {
+  let s = text;
+  for (const [re, rep] of STT_CORRECTIONS) s = s.replace(re, rep);
+  return s;
+}
+
 // Swift helper source for macOS Speech Recognition
 const SWIFT_HELPER = `
 import Foundation
@@ -37,6 +76,7 @@ let recognizer = SFSpeechRecognizer(locale: Locale(identifier: "en-US"))!
 let audioEngine = AVAudioEngine()
 let request = SFSpeechAudioBufferRecognitionRequest()
 request.shouldReportPartialResults = false
+request.contextualStrings = ${STT_VOCAB_SWIFT}
 
 let inputNode = audioEngine.inputNode
 let recordingFormat = inputNode.outputFormat(forBus: 0)
@@ -93,12 +133,18 @@ export class MacOSVoiceInput implements VoiceInputProvider {
   }
 
   private async ensureHelper(): Promise<boolean> {
-    if (existsSync(this.helperPath)) return true;
-
     const voiceDir = dirname(this.helperPath);
-    if (!existsSync(voiceDir)) mkdirSync(voiceDir, { recursive: true });
-
     const swiftPath = join(voiceDir, 'voice-helper.swift');
+
+    // Recompile when the helper source changes (e.g. updated STT vocabulary),
+    // not just when the binary is missing.
+    const upToDate =
+      existsSync(this.helperPath) &&
+      existsSync(swiftPath) &&
+      readFileSync(swiftPath, 'utf-8') === SWIFT_HELPER;
+    if (upToDate) return true;
+
+    if (!existsSync(voiceDir)) mkdirSync(voiceDir, { recursive: true });
     writeFileSync(swiftPath, SWIFT_HELPER);
 
     console.log(fmt.info('Compiling voice helper (one-time setup)...'));

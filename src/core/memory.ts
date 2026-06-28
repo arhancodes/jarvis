@@ -1,6 +1,7 @@
 import { readFileSync, writeFileSync, existsSync } from 'fs';
 import { configPath } from '../utils/config.js';
 import { createLogger } from '../utils/logger.js';
+import { isSidecarAvailable, indexDocument, vectorSearch } from '../utils/rust-bridge.js';
 
 const log = createLogger('memory');
 
@@ -158,6 +159,34 @@ export function addFact(
     });
   }
   maybeSaveMemory();
+  void indexFact(key, value); // best-effort semantic index for recall
+}
+
+// Index a fact in the Rust vector store so it can be recalled by meaning, not
+// just keyword. Best-effort and non-blocking — failures are silent.
+async function indexFact(key: string, value: string): Promise<void> {
+  try {
+    if (await isSidecarAvailable()) {
+      await indexDocument(`fact:${key}`, `${key.replace(/[._]/g, ' ')}: ${value}`, { key });
+    }
+  } catch { /* sidecar optional */ }
+}
+
+/**
+ * Recall the facts most relevant to a query by semantic similarity (Rust vector
+ * search), falling back to keyword search when the sidecar is unavailable.
+ */
+export async function recallFacts(query: string, topK = 8): Promise<MemoryFact[]> {
+  loadMemory();
+  try {
+    if (await isSidecarAvailable()) {
+      const hits = await vectorSearch(query, topK, 0.15);
+      const byId = new Map(memoryData.facts.map((f) => [`fact:${f.key}`, f]));
+      const found = hits.map((h) => byId.get(h.id)).filter((f): f is MemoryFact => !!f);
+      if (found.length) return found;
+    }
+  } catch { /* fall through to keyword */ }
+  return searchFacts(query);
 }
 
 export function getFact(key: string): MemoryFact | undefined {
@@ -276,6 +305,29 @@ export function buildMemoryContext(): string {
     }
   }
 
+  return parts.join('\n');
+}
+
+/**
+ * Like buildMemoryContext, but once the user has a lot of stored facts it
+ * includes only the ones semantically relevant to `query` (via vector recall)
+ * instead of dumping everything into the prompt. Small memories are unchanged.
+ */
+export async function buildMemoryContextAsync(query: string): Promise<string> {
+  loadMemory();
+  if (memoryData.facts.length <= 24) return buildMemoryContext();
+
+  const relevant = await recallFacts(query, 16);
+  const facts = relevant.length ? relevant : memoryData.facts;
+  const parts: string[] = ['[MEMORY - What I know about the user (USE THIS TO ANSWER QUESTIONS)]'];
+  for (const f of facts) {
+    const readableKey = f.key.replace(/\./g, ' ').replace(/_/g, ' ');
+    parts.push(`- ${readableKey}: ${f.value} (stored as: ${f.key})`);
+  }
+  if (conversationData.summaries.length > 0) {
+    parts.push('', '[MEMORY - Previous conversations]');
+    for (const s of conversationData.summaries.slice(-5)) parts.push(`- ${s.summary}`);
+  }
   return parts.join('\n');
 }
 

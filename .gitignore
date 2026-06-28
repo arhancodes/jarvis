@@ -40,3 +40,4 @@ plan.md
 rust-sidecar/target/
 config/whatsapp-contacts.json
 config/whoop.json
+config/learned-commands.json

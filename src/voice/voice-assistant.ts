@@ -1,6 +1,6 @@
 import { spawn, exec, ChildProcess } from 'child_process';
 import { createInterface } from 'readline';
-import { existsSync, mkdirSync, writeFileSync } from 'fs';
+import { existsSync, mkdirSync, writeFileSync, readFileSync } from 'fs';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
 import { run } from '../utils/shell.js';
@@ -17,7 +17,8 @@ import { reportState, reportCommand, reportSpeaking } from '../utils/status-repo
 import { conversationEngine } from '../core/conversation-engine.js';
 import { ScreenWatcher } from '../modules/screen-watcher.js';
 import { captureScreenText } from '../modules/screen-awareness.js';
-import { llmQuick } from '../utils/llm.js';
+import { llmQuick, prewarmLLM } from '../utils/llm.js';
+import { STT_VOCAB_SWIFT, correctTranscript } from './voice-input.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -95,6 +96,7 @@ class VoiceDaemon {
 
         let newRequest = SFSpeechAudioBufferRecognitionRequest()
         newRequest.shouldReportPartialResults = true
+        newRequest.contextualStrings = ${STT_VOCAB_SWIFT}
         if useOnDevice {
             newRequest.requiresOnDeviceRecognition = true
         }
@@ -292,12 +294,17 @@ export class VoiceAssistant {
 
   private async ensureDaemon(): Promise<boolean> {
     const daemonBinary = this.getDaemonPath();
-    if (existsSync(daemonBinary)) return true;
-
     const voiceDir = dirname(daemonBinary);
-    if (!existsSync(voiceDir)) mkdirSync(voiceDir, { recursive: true });
-
     const swiftSource = join(voiceDir, 'voice-daemon.swift');
+
+    // Recompile when the daemon source changes (e.g. updated STT vocabulary).
+    const upToDate =
+      existsSync(daemonBinary) &&
+      existsSync(swiftSource) &&
+      readFileSync(swiftSource, 'utf-8') === VOICE_DAEMON_SWIFT;
+    if (upToDate) return true;
+
+    if (!existsSync(voiceDir)) mkdirSync(voiceDir, { recursive: true });
     writeFileSync(swiftSource, VOICE_DAEMON_SWIFT);
 
     console.log(fmt.info('Compiling voice daemon (one-time setup)...'));
@@ -433,6 +440,7 @@ export class VoiceAssistant {
         this.state = 'activated';
         this.activatedText = text;
         reportState('activated');
+        prewarmLLM(); // warm the API socket while the user finishes speaking
 
         // Play activation sound
         exec('afplay /System/Library/Sounds/Pop.aiff &');
@@ -547,7 +555,7 @@ export class VoiceAssistant {
     // Strip everything up to and including "jarvis" — including when the STT
     // fuses it to the next word ("jarvisbrowse youtube" -> "browse youtube").
     const cleaned = text.replace(/^.*?jarvis[\s,.:]*/i, '').trim();
-    return cleaned || null;
+    return cleaned ? correctTranscript(cleaned) : null;
   }
 
   /**

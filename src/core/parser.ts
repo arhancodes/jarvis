@@ -1,7 +1,7 @@
 import type { ParsedCommand, ModuleName } from './types.js';
 import { registry } from './registry.js';
 import { expandVariables } from './context.js';
-import { readCachedConfig, invalidateCache } from '../utils/config.js';
+import { readCachedConfig, invalidateCache, writeJsonConfig } from '../utils/config.js';
 import { createLogger } from '../utils/logger.js';
 import { fuzzyMatch as rustFuzzyMatch, isSidecarAvailable, type KeywordEntry } from '../utils/rust-bridge.js';
 
@@ -15,6 +15,28 @@ function loadAliases(): Record<string, string> {
 
 export function invalidateAliasCache(): void {
   invalidateCache('aliases.json');
+}
+
+// ── Learned routes (self-improving) ──
+// Exact-phrase → command mappings JARVIS taught itself: when an unmatched
+// phrase is resolved to a single successful action by the conversation engine,
+// it's remembered here so the same phrase routes instantly next time.
+interface LearnedRoute { module: ModuleName; action: string; args: Record<string, string> }
+
+function loadLearnedRoutes(): Record<string, LearnedRoute> {
+  return readCachedConfig<Record<string, LearnedRoute>>('learned-commands.json', {});
+}
+
+export function learnRoute(phrase: string, cmd: LearnedRoute): void {
+  const key = phrase.trim().toLowerCase();
+  if (!key) return;
+  const routes = { ...readCachedConfig<Record<string, LearnedRoute>>('learned-commands.json', {}) };
+  routes[key] = cmd;
+  const keys = Object.keys(routes);
+  if (keys.length > 300) for (const k of keys.slice(0, keys.length - 300)) delete routes[k];
+  writeJsonConfig('learned-commands.json', routes);
+  invalidateCache('learned-commands.json');
+  log.debug(`learned route: "${key}" -> ${cmd.module}.${cmd.action}`);
 }
 
 function looksLikePath(text: string): boolean {
@@ -124,6 +146,15 @@ export async function parse(raw: string, _retry = false): Promise<ParsedCommand 
   const aliasKey = input.toLowerCase();
   if (aliasKey in aliases) {
     input = aliases[aliasKey];
+  }
+
+  // Phase 1.5: Learned routes — exact phrases JARVIS taught itself map straight
+  // to a command (instant + deterministic, no LLM round-trip).
+  const learned = loadLearnedRoutes();
+  const learnedKey = input.toLowerCase();
+  if (learnedKey in learned) {
+    const r = learned[learnedKey];
+    return { module: r.module, action: r.action, args: r.args || {}, raw: input, confidence: 1.0 };
   }
 
   // Phase 2: Handle "open" disambiguation

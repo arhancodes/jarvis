@@ -3,7 +3,8 @@ import { llmStreamChat, isLLMAvailable, getActiveLLMProvider, getLastUsedLabel }
 import { llmStreamChat as generateText } from '../utils/llm.js';
 import { registry } from './registry.js';
 import { execute } from './executor.js';
-import { buildMemoryContext, addConversationEntry, getRecentConversation, getAllConversations, getSummaries, addSummary, clearConversation, setConversations, addFact, type MemoryFact } from './memory.js';
+import { parse, learnRoute } from './parser.js';
+import { buildMemoryContext, buildMemoryContextAsync, addConversationEntry, getRecentConversation, getAllConversations, getSummaries, addSummary, clearConversation, setConversations, addFact, type MemoryFact } from './memory.js';
 import { buildCapabilityPrompt } from './capabilities.js';
 
 // ── Conversation Engine ──
@@ -48,6 +49,7 @@ interface ParsedMemory {
 class ConversationEngine {
   private model: string = '';
   private abortController: AbortController | null = null;
+  private memoryContextOverride: string | null = null;
 
   getModel(): string {
     // After a call, show what was actually used; before any call, show expected provider
@@ -107,9 +109,13 @@ class ConversationEngine {
     const signal = this.abortController.signal;
 
     const model = this.getModel();
+    // Relevance-rank stored facts for this query (semantic recall kicks in once
+    // the user has a lot of memories; otherwise it's the full set as before).
+    this.memoryContextOverride = await buildMemoryContextAsync(userInput);
     const messages = this.buildMessages(userInput, options?.screenContext);
 
     const allCommandsExecuted: ConversationResponse['commandsExecuted'] = [];
+    const executedActions: Array<{ action: ParsedAction; result: CommandResult }> = [];
     const allMemoriesStored: string[] = [];
     let allDisplayText = '';
 
@@ -154,6 +160,7 @@ class ConversationEngine {
         options?.onCommandStart?.(action.raw);
         const result = await this.executeAction(action);
         turnCommands.push({ raw: action.raw, result });
+        executedActions.push({ action, result });
         options?.onCommandResult?.(action.raw, result);
       }
       allCommandsExecuted.push(...turnCommands);
@@ -188,8 +195,25 @@ class ConversationEngine {
       commandExecuted: allCommandsExecuted.length > 0 ? allCommandsExecuted.map(c => c.raw).join(', ') : undefined,
     });
 
+    // Self-improving routing: if a short, genuinely-unmatched phrase resolved to
+    // exactly one successful action, remember it so the same phrase routes
+    // instantly (no LLM) next time. Exact-phrase match keeps it safe — variable
+    // phrasings simply don't hit the cache.
+    if (!isCasual && !signal.aborted && executedActions.length === 1 && executedActions[0].result.success) {
+      const words = userInput.trim().split(/\s+/);
+      if (words.length >= 1 && words.length <= 8) {
+        try {
+          if ((await parse(userInput)) === null) {
+            const a = executedActions[0].action;
+            learnRoute(userInput, { module: a.module as ModuleName, action: a.action, args: a.args });
+          }
+        } catch { /* learning is best-effort */ }
+      }
+    }
+
     await this.maybeCompactConversation();
     this.abortController = null;
+    this.memoryContextOverride = null;
 
     return {
       text: allDisplayText.trim(),
@@ -297,7 +321,7 @@ class ConversationEngine {
   // ── Private Methods ──
 
   private buildSystemPrompt(): string {
-    const memoryContext = buildMemoryContext();
+    const memoryContext = this.memoryContextOverride ?? buildMemoryContext();
     const capabilities = buildCapabilityPrompt();
 
     return `You are JARVIS, an advanced AI assistant built by and for Arhan Harchandani. You are modeled after Tony Stark's AI from Iron Man — intelligent, witty, efficient, and fiercely loyal.
